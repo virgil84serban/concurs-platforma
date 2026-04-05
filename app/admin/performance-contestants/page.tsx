@@ -20,20 +20,26 @@ type Category = {
 
 type Performance = {
   id: string
-  title: string
+  title: string | null
   choreographer_name: string | null
   duration_seconds: number | null
-  status: string
-  category_id: string
-  competition_id: string
-  categories?: {
+  status: string | null
+  category_id: string | null
+  competition_id: string | null
+  categories: {
     formation_type: string | null
     dance_style: string | null
     age_group: string | null
     level: string | null
-  } | null
-  performance_contestants?: {
-    id: string
+  }[] | null
+  performance_contestants: {
+    contestant_id: string | null
+    contestants?: {
+      id: string
+      full_name: string | null
+      birth_date: string | null
+      club_id: string | null
+    }[] | null
   }[] | null
 }
 
@@ -143,7 +149,7 @@ export default function PerformancesPage() {
       `)
       .order('created_at', { ascending: false })
 
-    setPerformances((data as Performance[]) || [])
+    setPerformances((data as unknown as Performance[]) || [])
   }
 
   useEffect(() => {
@@ -204,20 +210,20 @@ export default function PerformancesPage() {
   }
 
   const performanceCards = useMemo(() => {
-    return performances.map((performance) => {
-      const formationType = performance.categories?.formation_type || null
-      const participantCount = performance.performance_contestants?.length || 0
-      const rule = getParticipantRule(formationType)
-      const isValid = getValidationStatus(formationType, participantCount)
+  return performances.map((performance) => {
+    const formationType = performance.categories?.[0]?.formation_type || null
+    const participantCount = performance.performance_contestants?.length || 0
+    const rule = getParticipantRule(formationType)
+    const isValid = getValidationStatus(formationType, participantCount)
 
-      return {
-        ...performance,
-        participantCount,
-        ruleLabel: rule.label,
-        isValid,
-      }
-    })
-  }, [performances])
+    return {
+      ...performance,
+      participantCount,
+      ruleLabel: rule.label,
+      isValid,
+    }
+  })
+}, [performances])
 
   return (
     <main className="min-h-screen bg-gray-100 p-8">
@@ -325,10 +331,10 @@ export default function PerformancesPage() {
                   </p>
 
                   <p className="text-sm text-gray-600">
-                    Categorie: {performance.categories?.formation_type || '-'} |{' '}
-                    {performance.categories?.dance_style || '-'} |{' '}
-                    {performance.categories?.age_group || '-'} |{' '}
-                    {performance.categories?.level || '-'}
+                    Categorie: {performance.categories?.[0]?.formation_type || '-'} |{' '}
+                    {performance.categories?.[0]?.dance_style || '-'} |{' '}
+                    {performance.categories?.[0]?.age_group || '-'} |{' '}
+                    {performance.categories?.[0]?.level || '-'}
                   </p>
 
                   <p className="text-sm text-gray-600">
