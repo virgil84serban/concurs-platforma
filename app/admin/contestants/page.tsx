@@ -13,7 +13,7 @@ type Contestant = {
   full_name: string
   birth_date: string | null
   club_id: string | null
-  clubs?: {name: string} | null
+  clubs: { name: string }[] | null
 }
 
 export default function ContestantsPage() {
