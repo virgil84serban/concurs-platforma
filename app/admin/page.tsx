@@ -30,14 +30,14 @@ type Performance = {
   start_type: string | null
   duration_seconds: number | null
   categories?: {
-    formation_type: string | null
-    dance_style: string | null
-    age_group: string | null
-    level: string | null
-  } | null
+  formation_type: string | null
+  dance_style: string | null
+  age_group: string | null
+  level: string | null
+}[] | null
   clubs?: {
-    name: string | null
-  } | null
+  name: string | null
+}[] | null
 }
 
 function formatFormationType(value: string | null) {
