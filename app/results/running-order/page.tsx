@@ -17,33 +17,26 @@ type Performance = {
   choreographer_name: string | null
   clubs?: {
     name: string
-  } | null
+  }[]
   categories?: {
     formation_type: string | null
     dance_style: string | null
     age_group: string | null
     level: string | null
-  } | null
+  }[]
 }
 
 function formatFormationType(value: string | null) {
   if (!value) return '-'
 
   switch (value) {
-    case 'solo':
-      return 'Solo'
-    case 'duo':
-      return 'Duo'
-    case 'trio':
-      return 'Trio'
-    case 'quartet':
-      return 'Quartet'
-    case 'group':
-      return 'Group'
-    case 'formation':
-      return 'Formation'
-    default:
-      return value
+    case 'solo': return 'Solo'
+    case 'duo': return 'Duo'
+    case 'trio': return 'Trio'
+    case 'quartet': return 'Quartet'
+    case 'group': return 'Group'
+    case 'formation': return 'Formation'
+    default: return value
   }
 }
 
@@ -90,9 +83,7 @@ export default function PublicRunningOrderPage() {
         running_order,
         duration_seconds,
         choreographer_name,
-        clubs (
-          name
-        ),
+        clubs ( name ),
         categories (
           formation_type,
           dance_style,
@@ -101,7 +92,7 @@ export default function PublicRunningOrderPage() {
         )
       `)
       .eq('competition_id', competitionId)
-      .order('running_order', { ascending: true, nullsFirst: false })
+      .order('running_order', { ascending: true })
 
     if (error) {
       setMessage('Eroare la running order: ' + error.message)
@@ -109,7 +100,7 @@ export default function PublicRunningOrderPage() {
       return
     }
 
-    setPerformances((data as Performance[]) || [])
+    setPerformances((data as unknown as Performance[]) || [])
     setLoading(false)
   }
 
@@ -126,7 +117,7 @@ export default function PublicRunningOrderPage() {
   }, [selectedCompetition])
 
   const selectedCompetitionTitle = useMemo(() => {
-    return competitions.find((competition) => competition.id === selectedCompetition)?.title || ''
+    return competitions.find(c => c.id === selectedCompetition)?.title || ''
   }, [competitions, selectedCompetition])
 
   return (
@@ -135,97 +126,32 @@ export default function PublicRunningOrderPage() {
         <div className="rounded-xl bg-white p-6 shadow">
           <h1 className="mb-4 text-3xl font-bold">Running Order</h1>
 
-          <div className="max-w-xl space-y-2">
-            <label className="block text-sm font-medium text-gray-600">
-              Alege concursul
-            </label>
-
-            <select
-              value={selectedCompetition}
-              onChange={(e) => setSelectedCompetition(e.target.value)}
-              className="w-full rounded-xl border-2 border-gray-300 bg-white p-4 text-lg font-semibold text-black shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500"
-            >
-              <option value="">Selecteaza concurs</option>
-              {competitions.map((competition) => (
-                <option key={competition.id} value={competition.id}>
-                  {competition.title}
-                </option>
-              ))}
-            </select>
-          </div>
+          <select
+            value={selectedCompetition}
+            onChange={(e) => setSelectedCompetition(e.target.value)}
+            className="w-full rounded-xl border p-4"
+          >
+            <option value="">Selecteaza concurs</option>
+            {competitions.map(c => (
+              <option key={c.id} value={c.id}>{c.title}</option>
+            ))}
+          </select>
 
           {selectedCompetitionTitle && (
-            <h2 className="mt-6 text-2xl font-bold text-gray-900">
-              {selectedCompetitionTitle}
-            </h2>
-          )}
-
-          {message && (
-            <p className="mt-4 text-sm text-red-600">{message}</p>
+            <h2 className="mt-6 text-2xl font-bold">{selectedCompetitionTitle}</h2>
           )}
         </div>
 
-        {!selectedCompetition ? (
-          <div className="rounded-xl bg-white p-6 shadow">
-            <p className="text-gray-600">Selecteaza un concurs.</p>
-          </div>
-        ) : loading ? (
-          <div className="rounded-xl bg-white p-6 shadow">
-            <p className="text-gray-600">Se incarca...</p>
-          </div>
-        ) : performances.length === 0 ? (
-          <div className="rounded-xl bg-white p-6 shadow">
-            <p className="text-gray-600">Nu exista momente pentru acest concurs.</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto rounded-xl bg-white shadow">
-            <table className="min-w-full border-collapse">
-              <thead>
-                <tr className="border-b bg-gray-50 text-left">
-                  <th className="p-4 text-sm font-semibold text-gray-600">Ordine</th>
-                  <th className="p-4 text-sm font-semibold text-gray-600">Moment</th>
-                  <th className="p-4 text-sm font-semibold text-gray-600">Club</th>
-                  <th className="p-4 text-sm font-semibold text-gray-600">Categorie</th>
-                  <th className="p-4 text-sm font-semibold text-gray-600">Durata</th>
-                  <th className="p-4 text-sm font-semibold text-gray-600">Coregraf</th>
-                </tr>
-              </thead>
+        {performances.map(p => {
+          const club = p.clubs?.[0]
+          const cat = p.categories?.[0]
 
-              <tbody>
-                {performances.map((performance) => (
-                  <tr key={performance.id} className="border-b last:border-b-0">
-                    <td className="p-4 text-sm font-semibold text-gray-900">
-                      {performance.running_order ?? '-'}
-                    </td>
-
-                    <td className="p-4 text-sm font-medium text-gray-900">
-                      {performance.title}
-                    </td>
-
-                    <td className="p-4 text-sm text-gray-700">
-                      {performance.clubs?.name || '-'}
-                    </td>
-
-                    <td className="p-4 text-sm text-gray-700">
-                      {performance.categories?.dance_style || '-'} |{' '}
-                      {performance.categories?.age_group || '-'} |{' '}
-                      {performance.categories?.level || '-'} |{' '}
-                      {formatFormationType(performance.categories?.formation_type || null)}
-                    </td>
-
-                    <td className="p-4 text-sm text-gray-700">
-                      {formatDuration(performance.duration_seconds)}
-                    </td>
-
-                    <td className="p-4 text-sm text-gray-700">
-                      {performance.choreographer_name || '-'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+          return (
+            <div key={p.id} className="bg-white p-4 rounded shadow">
+              {p.running_order} - {p.title} | {club?.name || '-'} | {cat?.dance_style}
+            </div>
+          )
+        })}
       </div>
     </main>
   )
