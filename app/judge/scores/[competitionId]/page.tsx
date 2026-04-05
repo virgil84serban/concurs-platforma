@@ -41,7 +41,7 @@ type Performance = {
     dance_style: string | null
     age_group: string | null
     level: string | null
-  } | null
+  }[] | null
 }
 
 type ScoreCriterion = {
@@ -411,7 +411,7 @@ export default function JudgeCompetitionPage() {
         return
       }
 
-      const performanceList = ((performancesData as Performance[]) || []).filter(
+      const performanceList = ((performancesData as unknown as Performance[]) || []).filter(
         (item) => typeof item.running_order === 'number'
       )
 
@@ -470,7 +470,7 @@ export default function JudgeCompetitionPage() {
       setLoading(false)
     }
 
-    init()
+    void init()
   }, [competitionId, router])
 
   async function handleLogout() {
@@ -499,10 +499,11 @@ export default function JudgeCompetitionPage() {
 
   const tableRows = useMemo<TableRow[]>(() => {
     const baseRows = performances.map((performance) => {
-      const formationType = performance.categories?.formation_type || null
-      const discipline = performance.categories?.dance_style || '-'
-      const age = performance.categories?.age_group || '-'
-      const level = performance.categories?.level || '-'
+      const firstCategory = performance.categories?.[0]
+      const formationType = firstCategory?.formation_type || null
+      const discipline = firstCategory?.dance_style || '-'
+      const age = firstCategory?.age_group || '-'
+      const level = firstCategory?.level || '-'
       const section = formatFormationType(formationType)
 
       let total = 0
@@ -686,7 +687,7 @@ export default function JudgeCompetitionPage() {
         return
       }
 
-      const formationType = performance.categories?.formation_type || null
+      const formationType = performance.categories?.[0]?.formation_type || null
       const rowsToInsert: Array<{
         performance_id: string
         judge_id: string
@@ -775,7 +776,7 @@ export default function JudgeCompetitionPage() {
         return
       }
 
-      const formationType = performance.categories?.formation_type || null
+      const formationType = performance.categories?.[0]?.formation_type || null
 
       for (const criterion of criteria) {
         if (isSoloFormation(formationType) && isSyncCriterionName(criterion.name)) {
