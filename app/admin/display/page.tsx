@@ -18,23 +18,23 @@ type Competition = {
 
 type Performance = {
   id: string
-  title: string
+  title: string | null
   running_order: number | null
-  competition_id: string | null
+  competition_id: string
   status: string | null
   admin_status: string | null
   choreographer_name: string | null
   participant_names: string | null
   group_name: string | null
-  categories?: {
+  clubs: {
+    name: string | null
+  }[] | null
+  categories: {
     formation_type: string | null
     dance_style: string | null
     age_group: string | null
     level: string | null
-  } | null
-  clubs?: {
-    name: string | null
-  } | null
+  }[] | null
 }
 
 type ScoreRow = {
@@ -286,7 +286,7 @@ export default function AdminDisplayPage() {
       return
     }
 
-    const performanceRows = (performancesData as Performance[]) || []
+    const performanceRows = (performancesData as unknown as Performance[]) || []
     setPerformances(performanceRows)
 
     const { data: scoresData, error: scoresError } = await supabase
@@ -339,7 +339,7 @@ export default function AdminDisplayPage() {
         resultMap.set(performance.id, {
           performance_id: performance.id,
           title: performance.title || '-',
-          club: performance.clubs?.name || '-',
+          club: performance.clubs?.[0]?.name|| '-',
           choreographer: performance.choreographer_name || '-',
           total: Number(score.value),
           running_order: performance.running_order ?? null,
