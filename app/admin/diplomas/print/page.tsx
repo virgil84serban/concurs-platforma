@@ -14,23 +14,26 @@ type CompetitionRow = Record<string, unknown>
 
 type PerformanceRow = {
   id: string
-  title: string
+  title: string | null
   competition_id: string
+  running_order: number | null
   status: string | null
   admin_status: string | null
-  running_order: number | null
+  choreographer_name: string | null
+  declared_participants_count: number | null
   participant_names: string | null
   group_name: string | null
-  choreographer_name: string | null
-  clubs?: Array<{
+  start_type: string | null
+  duration_seconds: number | null
+  clubs: {
     name: string | null
-  }> | null
-  categories?: Array<{
+  }[] | null
+  categories: {
     formation_type: string | null
     dance_style: string | null
     age_group: string | null
     level: string | null
-  }> | null
+  }[] | null
 }
 
 type ScoreRow = {

@@ -17,8 +17,8 @@ type Competition = {
 
 type PerformanceRow = {
   id: string
-  title: string
-  competition_id: string | null
+  title: string | null
+  competition_id: string
   running_order: number | null
   status: string | null
   admin_status: string | null
@@ -28,16 +28,15 @@ type PerformanceRow = {
   group_name: string | null
   start_type: string | null
   duration_seconds: number | null
-  music_file_name: string | null
-  clubs?: {
-    name: string
-  } | null
-  categories?: {
+  clubs: {
+    name: string | null
+  }[] | null
+  categories: {
+    formation_type: string | null
     dance_style: string | null
     age_group: string | null
-    formation_type: string | null
     level: string | null
-  } | null
+  }[] | null
 }
 
 type ScoreRow = {
@@ -257,13 +256,13 @@ export default function AdminExportsPage() {
       return
     }
 
-    const rows = ((data as PerformanceRow[]) || []).map((item) => ({
+    const rows = ((data as unknown as PerformanceRow[]) || []).map((item) => ({
       Id: item.running_order ?? '',
-      Club: item.clubs?.name || '-',
-      Disciplina: item.categories?.dance_style || '-',
-      Varsta: item.categories?.age_group || '-',
-      Sectiune: formatFormationType(item.categories?.formation_type || null),
-      Nivel: item.categories?.level || '-',
+      Club: item.clubs?.[0].name || '-',
+      Disciplina: item.categories?.[0].dance_style || '-',
+      Varsta: item.categories?.[0].age_group || '-',
+     Sectiune: formatFormationType(item.categories?.[0]?.formation_type || null),
+      Nivel: item.categories?.[0].level || '-',
       Dansatori: item.group_name || item.participant_names || '-',
       'Nr. participanti': item.declared_participants_count ?? '',
       Coregrafie: item.title,
