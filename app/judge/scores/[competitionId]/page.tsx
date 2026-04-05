@@ -11,6 +11,7 @@ type Profile = {
   email: string | null
   full_name?: string | null
   name?: string | null
+  club_id?: string | null
 }
 
 type Competition = {
@@ -32,6 +33,7 @@ type JudgeAssignment = {
 type Performance = {
   id: string
   competition_id: string
+  club_id: string | null
   running_order: number | null
   title: string | null
   status: string | null
@@ -84,6 +86,7 @@ type TableRow = {
   isComplete: boolean
   hasAnyValue: boolean
   autoSaveSignature: string
+  isOwnClubConflict: boolean
 }
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
@@ -97,7 +100,8 @@ function isSoloFormation(formationType: string | null | undefined) {
 }
 
 function isSyncCriterionName(name: string) {
-  return normalizeText(name) === 'sincronizare'
+  const normalized = normalizeText(name)
+  return normalized === 'sincronizare' || normalized === 'sincron'
 }
 
 function buildScoreKey(performanceId: string, criterionId: string) {
@@ -182,6 +186,7 @@ const JudgeScoreRow = memo(function JudgeScoreRow({
     }
 
     if (row.isSubmitted) return
+    if (row.isOwnClubConflict) return
     if (!row.hasAnyValue) return
     if (!row.isComplete) return
 
@@ -193,6 +198,7 @@ const JudgeScoreRow = memo(function JudgeScoreRow({
   }, [
     row.autoSaveSignature,
     row.isSubmitted,
+    row.isOwnClubConflict,
     row.hasAnyValue,
     row.isComplete,
     row.performanceId,
@@ -200,6 +206,7 @@ const JudgeScoreRow = memo(function JudgeScoreRow({
   ])
 
   function renderStatus() {
+    if (row.isOwnClubConflict) return 'Blocat'
     if (row.isSubmitted) return 'Final'
     if (isSubmittingThisRow) return 'Se trimite...'
     if (isSavingThisRow || saveState === 'saving') return 'Se salveaza...'
@@ -217,6 +224,8 @@ const JudgeScoreRow = memo(function JudgeScoreRow({
           isSoloFormation(row.formationType) &&
           isSyncCriterionName(criterion.name)
 
+        const disabledBecauseOwnClub = row.isOwnClubConflict
+
         return (
           <td key={criterion.id} className="p-3 text-sm">
             {disabledForSolo ? (
@@ -232,7 +241,7 @@ const JudgeScoreRow = memo(function JudgeScoreRow({
                 onChange={(e) =>
                   onScoreChange(row.performanceId, criterion.id, e.target.value)
                 }
-                disabled={row.isSubmitted}
+                disabled={row.isSubmitted || disabledBecauseOwnClub}
                 className="w-20 rounded-lg border p-2 text-sm disabled:bg-gray-100 disabled:text-gray-500"
               />
             )}
@@ -244,14 +253,18 @@ const JudgeScoreRow = memo(function JudgeScoreRow({
       <td className="p-3 text-sm font-semibold">{row.rankLabel}</td>
       <td className="p-3 text-sm font-semibold">{renderStatus()}</td>
       <td className="p-3 text-sm">
-        <button
-          type="button"
-          onClick={() => onSubmitFinal(row.performanceId)}
-          disabled={isSubmittingThisRow || row.isSubmitted}
-          className="rounded-lg bg-gray-200 px-3 py-2 text-gray-900 disabled:opacity-50"
-        >
-          {isSubmittingThisRow ? 'Se trimite...' : 'Submit final'}
-        </button>
+        {row.isOwnClubConflict ? (
+          <span className="text-sm text-red-600">Nu poti juriza propriul club</span>
+        ) : (
+          <button
+            type="button"
+            onClick={() => onSubmitFinal(row.performanceId)}
+            disabled={isSubmittingThisRow || row.isSubmitted}
+            className="rounded-lg bg-gray-200 px-3 py-2 text-gray-900 disabled:opacity-50"
+          >
+            {isSubmittingThisRow ? 'Se trimite...' : 'Submit final'}
+          </button>
+        )}
       </td>
     </tr>
   )
@@ -299,7 +312,7 @@ export default function JudgeCompetitionPage() {
 
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, role, email, full_name, club_id')
         .eq('id', user.id)
         .maybeSingle()
 
@@ -368,6 +381,7 @@ export default function JudgeCompetitionPage() {
         .select(`
           id,
           competition_id,
+          club_id,
           running_order,
           title,
           status,
@@ -480,7 +494,14 @@ export default function JudgeCompetitionPage() {
 
   const handleScoreChange = useCallback(
     (performanceId: string, criterionId: string, value: string) => {
+      const performance = performances.find((item) => item.id === performanceId)
+      const isOwnClubConflict =
+        !!profile?.club_id &&
+        !!performance?.club_id &&
+        profile.club_id === performance.club_id
+
       if (submittedMap[performanceId]) return
+      if (isOwnClubConflict) return
 
       const key = buildScoreKey(performanceId, criterionId)
 
@@ -494,7 +515,7 @@ export default function JudgeCompetitionPage() {
         [performanceId]: 'idle',
       }))
     },
-    [submittedMap]
+    [submittedMap, performances, profile]
   )
 
   const tableRows = useMemo<TableRow[]>(() => {
@@ -505,6 +526,10 @@ export default function JudgeCompetitionPage() {
       const age = firstCategory?.age_group || '-'
       const level = firstCategory?.level || '-'
       const section = formatFormationType(formationType)
+      const isOwnClubConflict =
+        !!profile?.club_id &&
+        !!performance.club_id &&
+        profile.club_id === performance.club_id
 
       let total = 0
       let isComplete = true
@@ -551,6 +576,7 @@ export default function JudgeCompetitionPage() {
         isComplete,
         hasAnyValue,
         autoSaveSignature: signatureParts.join('|'),
+        isOwnClubConflict,
       }
     })
 
@@ -606,7 +632,7 @@ export default function JudgeCompetitionPage() {
       ...row,
       rankLabel: rankLabelMap.get(row.performanceId) || '-',
     }))
-  }, [performances, criteria, scoreValues, submittedMap])
+  }, [performances, criteria, scoreValues, submittedMap, profile])
 
   const filteredRows = useMemo(() => {
     const searchValue = searchRunningOrder.trim()
@@ -687,13 +713,23 @@ export default function JudgeCompetitionPage() {
         return
       }
 
+      const isOwnClubConflict =
+        !!profile?.club_id &&
+        !!performance.club_id &&
+        profile.club_id === performance.club_id
+
+      if (isOwnClubConflict) {
+        setSaveStateMap((prev) => ({ ...prev, [performanceId]: 'error' }))
+        return
+      }
+
       const formationType = performance.categories?.[0]?.formation_type || null
       const rowsToInsert: Array<{
-  performance_id: string
-  judge_id: string
-  criterion_id: string
-  score: number
-}> = []
+        performance_id: string
+        judge_id: string
+        criterion_id: string
+        score: number
+      }> = []
 
       for (const criterion of criteria) {
         if (isSoloFormation(formationType) && isSyncCriterionName(criterion.name)) {
@@ -753,7 +789,7 @@ export default function JudgeCompetitionPage() {
         setSavingRowId(null)
       }
     },
-    [assignment, submittedMap, performances, criteria, scoreValues]
+    [assignment, submittedMap, performances, criteria, scoreValues, profile]
   )
 
   const handleSubmitFinal = useCallback(
@@ -773,6 +809,16 @@ export default function JudgeCompetitionPage() {
       const performance = performances.find((item) => item.id === performanceId)
       if (!performance) {
         setPageMessage('Momentul nu a fost gasit.')
+        return
+      }
+
+      const isOwnClubConflict =
+        !!profile?.club_id &&
+        !!performance.club_id &&
+        profile.club_id === performance.club_id
+
+      if (isOwnClubConflict) {
+        setPageMessage('Nu poti juriza propriul club.')
         return
       }
 
@@ -837,7 +883,7 @@ export default function JudgeCompetitionPage() {
         setSubmittingRowId(null)
       }
     },
-    [assignment, submittedMap, performances, criteria, scoreValues, competitionId, handleAutoSaveRow]
+    [assignment, submittedMap, performances, criteria, scoreValues, competitionId, handleAutoSaveRow, profile]
   )
 
   if (loading) {
@@ -901,6 +947,11 @@ export default function JudgeCompetitionPage() {
               <p className="mt-1 text-sm text-gray-600 md:text-base">
                 Momente aprobate: {performances.length}
               </p>
+              {profile?.club_id && (
+                <p className="mt-1 text-sm text-gray-600 md:text-base">
+                  Restrictie activa: nu poti juriza propriul club
+                </p>
+              )}
             </div>
 
             <div className="flex flex-wrap gap-3">
@@ -1110,5 +1161,4 @@ export default function JudgeCompetitionPage() {
         </div>
       </div>
     </main>
-  )
-}
+  }
