@@ -338,17 +338,17 @@ export default function AdminDiplomasPrintPage() {
     })
 
     const rankedRows: RankedRow[] = performances.map((performance) => ({
-      performance_id: performance.id,
-      title: performance.title,
-      club: performance.clubs?.[0]?.name || '-',
-      discipline: performance.categories?.[0]?.dance_style || '-',
-      age: performance.categories?.[0]?.age_group || '-',
-      level: performance.categories?.[0]?.level || '-',
-      type: formatFormationType(performance.categories?.[0]?.formation_type || null),
-      running_order: performance.running_order ?? null,
-      participant_label: buildParticipantLabel(performance),
-      total: scoreTotals.get(performance.id) || 0,
-    }))
+  performance_id: performance.id,
+  title: performance.title || '-',
+  club: performance.clubs?.[0]?.name || '-',
+  discipline: performance.categories?.[0]?.dance_style || '-',
+  age: performance.categories?.[0]?.age_group || '-',
+  level: performance.categories?.[0]?.level || '-',
+  type: formatFormationType(performance.categories?.[0]?.formation_type || null),
+  running_order: performance.running_order ?? null,
+  participant_label: buildParticipantLabel(performance),
+  total: scoreTotals.get(performance.id) || 0,
+}))
 
     const groupsMap = new Map<string, RankedRow[]>()
 
