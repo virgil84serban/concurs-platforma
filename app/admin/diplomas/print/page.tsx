@@ -334,7 +334,7 @@ export default function AdminDiplomasPrintPage() {
     const rankedRows: RankedRow[] = performances.map((performance) => ({
   performance_id: performance.id,
   title: performance.title,
-  clubs: performance.clubs || null,
+  club: performance.clubs?.[0]?.name || '-',
   discipline: performance.categories?.[0]?.dance_style || '-',
   age: performance.categories?.[0]?.age_group || '-',
   level: performance.categories?.[0]?.level || '-',
