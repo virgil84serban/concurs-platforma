@@ -17,7 +17,7 @@ type AssignedCompetition = {
   competitions?: {
     id: string
     title: string
-  } | null
+  }[]
 }
 
 export default function JudgeScoresPage() {
@@ -75,7 +75,7 @@ export default function JudgeScoresPage() {
         return
       }
 
-      setCompetitions(assignments || [])
+      setCompetitions((assignments as unknown as AssignedCompetition[]) || [])
       setLoading(false)
     }
 
@@ -128,7 +128,7 @@ export default function JudgeScoresPage() {
                 {competitions.map((c) => (
                   <tr key={c.id} className="border-b">
                     <td className="p-3 text-sm">
-                      {c.competitions?.title || c.competition_id}
+                      {c.competitions?.[0]?.title || c.competition_id}
                     </td>
                     <td className="p-3">
                       <button
