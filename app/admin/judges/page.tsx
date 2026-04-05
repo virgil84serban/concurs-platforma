@@ -26,12 +26,12 @@ type AssignedJudge = {
   id: string
   user_id: string
   competition_id: string
-  profiles?: {
+  profiles: {
     id: string
     full_name: string | null
     email: string | null
     role: string | null
-  } | null
+  }[] | null
 }
 
 export default function AdminJudgesPage() {
@@ -132,9 +132,9 @@ export default function AdminJudgesPage() {
       return
     }
 
-    const judges = ((data as AssignedJudge[]) || []).sort((a, b) => {
-      const emailA = a.profiles?.email || ''
-      const emailB = b.profiles?.email || ''
+    const judges = ((data as unknown as AssignedJudge[]) || []).sort((a, b) => {
+      const emailA = a.profiles?.[0]?.email || ''
+      const emailB = b.profiles?.[0]?.email || ''
       return emailA.localeCompare(emailB, 'ro')
     })
 
@@ -181,8 +181,8 @@ export default function AdminJudgesPage() {
     }
 
     return assignedJudges.filter((judge) => {
-      const fullName = (judge.profiles?.full_name || '').toLowerCase()
-      const email = (judge.profiles?.email || '').toLowerCase()
+      const fullName = (judge.profiles?.[0]?.full_name || '').toLowerCase()
+      const email = (judge.profiles?.[0]?.email || '').toLowerCase()
       const userId = (judge.user_id || '').toLowerCase()
 
       return (
@@ -304,7 +304,7 @@ export default function AdminJudgesPage() {
       return
     }
 
-    const label = judge.profiles?.full_name || judge.profiles?.email || `user ${judge.user_id}`
+    const label = judge.profiles?.[0].full_name || judge.profiles?.email || `user ${judge.user_id}`
 
     const confirmDelete = window.confirm(
       `Sigur vrei sa stergi juratul ${label} din concursul selectat?`
@@ -366,7 +366,7 @@ export default function AdminJudgesPage() {
       (competition) => competition.id === moveTargetCompetitionId
     )
 
-    const label = judge.profiles?.full_name || judge.profiles?.email || `user ${judge.user_id}`
+    const label = judge.profiles?.[0]?.full_name || judge.profiles?.[0]?.email || `user ${judge.user_id}`
 
     const confirmMove = window.confirm(
       `Sigur vrei sa muti juratul ${label} in concursul "${targetCompetition?.title || '-'}"?`
