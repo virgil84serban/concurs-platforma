@@ -149,7 +149,7 @@ export default function ContestantsPage() {
                 <div key={contestant.id} className="rounded-lg border p-4">
                   <p className="font-semibold">{contestant.full_name}</p>
                   <p className="text-sm text-gray-600">
-                    Club: {contestant.clubs?.name || '-'}
+                    Club: {contestant.clubs?.[0]?.name || '-'}
                   </p>
                   <p className="text-sm text-gray-600">
                     Data nasterii: {contestant.birth_date || '-'}
