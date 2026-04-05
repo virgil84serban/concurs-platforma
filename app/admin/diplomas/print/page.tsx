@@ -22,15 +22,15 @@ type PerformanceRow = {
   participant_names: string | null
   group_name: string | null
   choreographer_name: string | null
-  clubs?: {
+  clubs?: Array<{
     name: string | null
-  } | null
-  categories?: {
+  }> | null
+  categories?: Array<{
     formation_type: string | null
     dance_style: string | null
     age_group: string | null
     level: string | null
-  } | null
+  }> | null
 }
 
 type ScoreRow = {
@@ -137,9 +137,12 @@ function getQueryParams() {
 
   const params = new URLSearchParams(window.location.search)
 
+  const modeParam = params.get('mode')
+  const mode: DiplomaMode = modeParam === 'final' ? 'final' : 'print'
+
   return {
     competitionId: params.get('competitionId') || '',
-    mode: (params.get('mode') || 'print') as DiplomaMode,
+    mode,
   }
 }
 
@@ -320,7 +323,7 @@ export default function AdminDiplomasPrintPage() {
       setLoading(false)
     }
 
-    init()
+    void init()
   }, [router])
 
   const diplomaRows = useMemo(() => {
@@ -332,17 +335,17 @@ export default function AdminDiplomasPrintPage() {
     })
 
     const rankedRows: RankedRow[] = performances.map((performance) => ({
-  performance_id: performance.id,
-  title: performance.title,
-  club: performance.clubs?.[0]?.name || '-',
-  discipline: performance.categories?.[0]?.dance_style || '-',
-  age: performance.categories?.[0]?.age_group || '-',
-  level: performance.categories?.[0]?.level || '-',
-  type: formatFormationType(performance.categories?.[0]?.formation_type || null),
-  running_order: performance.running_order ?? null,
-  participant_label: buildParticipantLabel(performance),
-  total: scoreTotals.get(performance.id) || 0,
-}))
+      performance_id: performance.id,
+      title: performance.title,
+      club: performance.clubs?.[0]?.name || '-',
+      discipline: performance.categories?.[0]?.dance_style || '-',
+      age: performance.categories?.[0]?.age_group || '-',
+      level: performance.categories?.[0]?.level || '-',
+      type: formatFormationType(performance.categories?.[0]?.formation_type || null),
+      running_order: performance.running_order ?? null,
+      participant_label: buildParticipantLabel(performance),
+      total: scoreTotals.get(performance.id) || 0,
+    }))
 
     const groupsMap = new Map<string, RankedRow[]>()
 
