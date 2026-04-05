@@ -36,10 +36,10 @@ type Performance = {
     dance_style: string | null
     age_group: string | null
     level: string | null
-  } | null
+  }[] | null
   clubs?: {
     name: string
-  } | null
+  }[] | null
   performance_contestants?: {
     id: string
   }[] | null
@@ -187,18 +187,18 @@ export default function PerformancesPage() {
       `)
       .order('running_order', { ascending: true, nullsFirst: false })
 
-    setPerformances((data as Performance[]) || [])
+    setPerformances((data as unknown as Performance[]) || [])
   }
 
   useEffect(() => {
-    loadCompetitions()
-    loadClubs()
-    loadPerformances()
+    void loadCompetitions()
+    void loadClubs()
+    void loadPerformances()
   }, [])
 
   useEffect(() => {
     if (selectedCompetition) {
-      loadCategories(selectedCompetition)
+      void loadCategories(selectedCompetition)
       setSelectedCategory('')
     } else {
       setCategories([])
@@ -283,7 +283,7 @@ export default function PerformancesPage() {
     }
 
     resetForm()
-    loadPerformances()
+    void loadPerformances()
   }
 
   function startEdit(performance: Performance) {
@@ -300,7 +300,7 @@ export default function PerformancesPage() {
     )
 
     if (performance.competition_id) {
-      loadCategories(performance.competition_id).then(() => {
+      void loadCategories(performance.competition_id).then(() => {
         setSelectedCategory(performance.category_id || '')
       })
     }
@@ -328,7 +328,7 @@ export default function PerformancesPage() {
     }
 
     setMessage('Moment sters cu succes')
-    loadPerformances()
+    void loadPerformances()
   }
 
   async function updateRunningOrder(performanceId: string, value: string) {
@@ -345,12 +345,12 @@ export default function PerformancesPage() {
     }
 
     setMessage('Ordinea a fost actualizata')
-    loadPerformances()
+    void loadPerformances()
   }
 
   const performanceCards = useMemo(() => {
     return performances.map((performance) => {
-      const formationType = performance.categories?.formation_type || null
+      const formationType = performance.categories?.[0]?.formation_type || null
       const participantCount = performance.performance_contestants?.length || 0
       const rule = getParticipantRule(formationType)
       const isValid = getValidationStatus(formationType, participantCount)
@@ -498,7 +498,7 @@ export default function PerformancesPage() {
                   </div>
 
                   <p className="text-sm text-gray-600">
-                    Club: {performance.clubs?.name || '-'}
+                    Club: {performance.clubs?.[0]?.name || '-'}
                   </p>
 
                   <p className="text-sm text-gray-600">
@@ -510,10 +510,10 @@ export default function PerformancesPage() {
                   </p>
 
                   <p className="text-sm text-gray-600">
-                    Categorie: {formatFormationType(performance.categories?.formation_type || null)} |{' '}
-                    {performance.categories?.dance_style || '-'} |{' '}
-                    {performance.categories?.age_group || '-'} |{' '}
-                    {performance.categories?.level || '-'}
+                    Categorie: {formatFormationType(performance.categories?.[0]?.formation_type || null)} |{' '}
+                    {performance.categories?.[0]?.dance_style || '-'} |{' '}
+                    {performance.categories?.[0]?.age_group || '-'} |{' '}
+                    {performance.categories?.[0]?.level || '-'}
                   </p>
 
                   <p className="text-sm text-gray-600">
