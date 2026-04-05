@@ -122,7 +122,11 @@ function formatFormationType(value: string | null) {
 }
 
 function getParticipantLabel(
-  performance: Performance | ScoreRow['performances'][number] | null | undefined
+  performance:
+    | Performance
+    | (ScoreRow['performances'] extends (infer U)[] ? U : never)
+    | null
+    | undefined
 ) {
   if (!performance) return '-'
   return performance.group_name || performance.participant_names || '-'
