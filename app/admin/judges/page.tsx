@@ -630,7 +630,7 @@ const confirmDelete = window.confirm(
       }
 
       setPageMessage(
-        `Parola a fost actualizata pentru ${judge.profiles?.email || judge.user_id}.`
+        `Parola a fost actualizata pentru ${judge.profiles?.[0]?.email || judge.user_id}.`
       )
 
       setPasswordInputs((prev) => ({
@@ -880,9 +880,9 @@ const confirmDelete = window.confirm(
                             disabled={isDeleting || isMoving || bulkMoving}
                           />
                         </td>
-                        <td className="p-3 text-sm">{judge.profiles?.full_name || '-'}</td>
-                        <td className="p-3 text-sm">{judge.profiles?.email || '-'}</td>
-                        <td className="p-3 text-sm">{judge.profiles?.role || '-'}</td>
+                        <td className="p-3 text-sm">{judge.profiles?.[0]?.full_name || '-'}</td>
+                        <td className="p-3 text-sm">{judge.profiles?.[0]?.email || '-'}</td>
+                        <td className="p-3 text-sm">{judge.profiles?.[0]?.role || '-'}</td>
                         <td className="p-3 text-sm">{judge.user_id}</td>
                         <td className="p-3 text-sm">
                           <div className="flex min-w-[220px] flex-col gap-2 md:flex-row">
