@@ -63,6 +63,12 @@ type ResultRow = {
   totalScore: number
   finalAverage: number
 }
+type RankingOverride = {
+  performance_id: string
+  manual_place: number
+  show_on_podium: boolean
+  podium_label: string | null
+}
 
 function formatFormationType(value: string | null) {
   if (!value) return '-'
@@ -195,6 +201,7 @@ export default function ResultsPage() {
   const [performances, setPerformances] = useState<Performance[]>([])
   const [scores, setScores] = useState<ScoreRow[]>([])
   const [criteria, setCriteria] = useState<Criterion[]>([])
+  const [rankingOverrides, setRankingOverrides] = useState<RankingOverride[]>([])
 
   async function loadSessionAndProfile() {
     const { data: sessionData } = await supabase.auth.getSession()
@@ -225,6 +232,20 @@ export default function ResultsPage() {
     setProfile(profileData as Profile)
     return profileData as Profile
   }
+  async function loadRankingOverrides(competitionId: string) {
+  const { data, error } = await supabase
+    .from('ranking_overrides')
+    .select('performance_id, manual_place, show_on_podium, podium_label')
+    .eq('competition_id', competitionId)
+
+  if (error) {
+    console.error('ranking override error', error)
+    setRankingOverrides([])
+    return
+  }
+
+  setRankingOverrides((data as RankingOverride[]) || [])
+}
 
   async function loadCompetitions() {
     const { data, error } = await supabase
@@ -318,11 +339,12 @@ export default function ResultsPage() {
 
   async function loadCompetitionData(id: string) {
     setMessage('')
-    await Promise.all([
-      loadCriteria(id),
-      loadPerformances(id),
-      loadScoresForCompetition(id),
-    ])
+   await Promise.all([
+  loadCriteria(id),
+  loadPerformances(id),
+  loadScoresForCompetition(id),
+  loadRankingOverrides(id),
+])
   }
 
   useEffect(() => {
@@ -400,6 +422,20 @@ export default function ResultsPage() {
 
     const groups = Array.from(map.entries()).map(([key, rows]) => {
       const sortedRows = [...rows].sort((a, b) => {
+  const overrideA = rankingOverrides.find(o => o.performance_id === a.performanceId)
+  const overrideB = rankingOverrides.find(o => o.performance_id === b.performanceId)
+
+  if (overrideA && overrideB) {
+    return overrideA.manual_place - overrideB.manual_place
+  }
+
+  if (overrideA) return -1
+  if (overrideB) return 1
+
+  if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore
+  if (b.finalAverage !== a.finalAverage) return b.finalAverage - a.finalAverage
+  return (a.runningOrder || 999999) - (b.runningOrder || 999999)
+})
         if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore
         if (b.finalAverage !== a.finalAverage) return b.finalAverage - a.finalAverage
         return (a.runningOrder || 999999) - (b.runningOrder || 999999)
@@ -471,7 +507,10 @@ export default function ResultsPage() {
           </div>
         ) : (
           groupedResults.map((group) => {
-            const top3 = group.rows.slice(0, 3)
+            const podiumRows = group.rows.filter(row => {
+  const override = rankingOverrides.find(o => o.performance_id === row.performanceId)
+  return override?.show_on_podium
+})
 
             return (
               <section
@@ -490,20 +529,41 @@ export default function ResultsPage() {
                   </p>
                 </div>
 
-                {top3.length > 0 && (
-                  <div className="mb-8">
-                    <h3 className="mb-4 text-lg font-bold text-gray-900">
-                      Podium
-                    </h3>
+                {podiumRows.length > 0 && (
+  <div className="mb-8">
+    <h3 className="mb-4 text-lg font-bold text-gray-900">
+      Podium
+    </h3>
 
-                    <div className="grid gap-4 md:grid-cols-3 md:items-end">
-                      {top3[1] && <PodiumCard row={top3[1]} place={2} />}
-                      {top3[0] && <PodiumCard row={top3[0]} place={1} />}
-                      {top3[2] && <PodiumCard row={top3[2]} place={3} />}
-                    </div>
-                  </div>
-                )}
+    <div className="grid gap-4 md:grid-cols-3">
+      {podiumRows.map((row, index) => {
+        const override = rankingOverrides.find(o => o.performance_id === row.performanceId)
 
+        return (
+          <div key={row.performanceId} className="rounded-2xl border bg-white p-5 shadow-sm">
+            <div className="mb-3 text-sm font-semibold text-gray-500">
+              {override?.podium_label || getPlaceBadge(index)}
+            </div>
+
+            <div className="mb-2 text-lg font-bold text-gray-900">{row.title}</div>
+
+            <p className="text-sm text-gray-600">
+              Club: {row.clubName}
+            </p>
+
+            <p className="text-sm text-gray-600">
+              Nr moment: {row.runningOrder || '-'}
+            </p>
+
+            <div className="mt-3 text-lg font-bold">
+              {formatNumber(row.totalScore)}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  </div>
+)}
                 <div className="overflow-x-auto">
                   <table className="min-w-[1300px] border-collapse">
                     <thead>
@@ -545,7 +605,11 @@ export default function ResultsPage() {
                             className={`border-b align-top ${highlightClass}`}
                           >
                             <td className="p-3 text-sm font-bold">
-                              {getPlaceBadge(index)}
+                              const override = rankingOverrides.find(o => o.performance_id === row.performanceId)
+
+return override?.manual_place
+  ? `Locul ${override.manual_place}`
+  : getPlaceBadge(index)
                             </td>
 
                             <td className="p-3 text-sm">{row.runningOrder || '-'}</td>
