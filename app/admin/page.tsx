@@ -231,29 +231,44 @@ export default function AdminPage() {
   }, [performances])
 
   async function loadSessionAndProfile() {
-    const { data: sessionData } = await supabase.auth.getSession()
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
 
-    if (!sessionData.session) {
-      router.push('/login')
-      return null
-    }
-
-    const user = sessionData.session.user
-
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('id, role, email, full_name, name')
-      .eq('id', user.id)
-      .maybeSingle()
-
-    if (!profileData || profileData.role !== 'admin') {
-      router.push('/login')
-      return null
-    }
-
-    setProfile(profileData as Profile)
-    return profileData as Profile
+  if (sessionError) {
+    setMessage('Eroare sesiune: ' + sessionError.message)
+    return null
   }
+
+  if (!sessionData.session) {
+    router.push('/login')
+    return null
+  }
+
+  const user = sessionData.session.user
+
+  const { data: profileData, error: profileError } = await supabase
+    .from('profiles')
+    .select('id, role, email, full_name, name')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (profileError) {
+    setMessage('Nu am putut citi profilul utilizatorului: ' + profileError.message)
+    return null
+  }
+
+  if (!profileData) {
+    setMessage('Nu exista profil pentru acest utilizator in tabela profiles.')
+    return null
+  }
+
+  if (profileData.role !== 'admin') {
+    setMessage(`Acces interzis. Rolul curent este: ${profileData.role || 'gol'}`)
+    return null
+  }
+
+  setProfile(profileData as Profile)
+  return profileData as Profile
+}
 
   async function loadCompetitions() {
     const { data, error } = await supabase
@@ -1048,17 +1063,22 @@ export default function AdminPage() {
   }
 
   useEffect(() => {
-    async function init() {
-      const p = await loadSessionAndProfile()
-      if (!p) return
-      await loadCompetitions()
-      await loadClubs()
-      await loadJudgeProfiles()
+  async function init() {
+    const p = await loadSessionAndProfile()
+
+    if (!p) {
       setLoading(false)
+      return
     }
 
-    init()
-  }, [router])
+    await loadCompetitions()
+    await loadClubs()
+    await loadJudgeProfiles()
+    setLoading(false)
+  }
+
+  init()
+}, [router])
 
   useEffect(() => {
     if (selectedCompetitionId) {
