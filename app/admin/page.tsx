@@ -347,11 +347,13 @@ export default function AdminPage() {
       return
     }
 
-    const isIndividual =
-      current.categories?.formation_type === 'solo' ||
-      current.categories?.formation_type === 'duo' ||
-      current.categories?.formation_type === 'trio' ||
-      current.categories?.formation_type === 'quartet'
+    const formationType = current.categories?.[0]?.formation_type
+
+const isIndividual =
+  formationType === 'solo' ||
+  formationType === 'duo' ||
+  formationType === 'trio' ||
+  formationType === 'quartet'
 
     setSaving(true)
     setMessage('')
@@ -927,7 +929,7 @@ export default function AdminPage() {
                       </td>
 
                       <td className="p-3 text-sm font-medium">{performance.title}</td>
-                      <td className="p-3 text-sm">{performance.clubs?.name || '-'}</td>
+                      <td className="p-3 text-sm">{performance.clubs?.[0].name || '-'}</td>
                       <td className="p-3 text-sm">{buildCategoryLabel(performance)}</td>
                       <td className="p-3 text-sm">{buildParticipantLabel(performance)}</td>
                       <td className="p-3 text-sm">{performance.declared_participants_count || '-'}</td>
