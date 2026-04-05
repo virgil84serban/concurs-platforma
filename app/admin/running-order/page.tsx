@@ -16,13 +16,13 @@ type Performance = {
   admin_status: string | null
   clubs?: {
     name: string
-  } | null
+  }[] | null
   categories?: {
     dance_style: string | null
     age_group: string | null
     formation_type: string | null
     level: string | null
-  } | null
+  }[] | null
 }
 
 function formatFormationType(value: string | null) {
@@ -99,17 +99,17 @@ export default function AdminRunningOrderPage() {
       return
     }
 
-    setPerformances((data as Performance[]) || [])
+    setPerformances((data as unknown as Performance[]) || [])
     setLoading(false)
   }
 
   useEffect(() => {
-    loadCompetitions()
+    void loadCompetitions()
   }, [])
 
   useEffect(() => {
     if (selectedCompetition) {
-      loadPerformances(selectedCompetition)
+      void loadPerformances(selectedCompetition)
     } else {
       setPerformances([])
     }
@@ -127,26 +127,26 @@ export default function AdminRunningOrderPage() {
     }
 
     const sorted = [...performances].sort((a, b) => {
-      const disciplineCompare = (a.categories?.dance_style || '').localeCompare(
-        b.categories?.dance_style || '',
+      const disciplineCompare = (a.categories?.[0]?.dance_style || '').localeCompare(
+        b.categories?.[0]?.dance_style || '',
         'ro'
       )
       if (disciplineCompare !== 0) return disciplineCompare
 
-      const ageCompare = (a.categories?.age_group || '').localeCompare(
-        b.categories?.age_group || '',
+      const ageCompare = (a.categories?.[0]?.age_group || '').localeCompare(
+        b.categories?.[0]?.age_group || '',
         'ro'
       )
       if (ageCompare !== 0) return ageCompare
 
-      const levelCompare = (a.categories?.level || '').localeCompare(
-        b.categories?.level || '',
+      const levelCompare = (a.categories?.[0]?.level || '').localeCompare(
+        b.categories?.[0]?.level || '',
         'ro'
       )
       if (levelCompare !== 0) return levelCompare
 
-      const formationCompare = (a.categories?.formation_type || '').localeCompare(
-        b.categories?.formation_type || '',
+      const formationCompare = (a.categories?.[0]?.formation_type || '').localeCompare(
+        b.categories?.[0]?.formation_type || '',
         'ro'
       )
       if (formationCompare !== 0) return formationCompare
@@ -169,7 +169,7 @@ export default function AdminRunningOrderPage() {
     }
 
     setMessage('Running Order generat automat')
-    loadPerformances(selectedCompetition)
+    void loadPerformances(selectedCompetition)
   }
 
   async function updateRunningOrder(performanceId: string, value: string) {
@@ -186,7 +186,7 @@ export default function AdminRunningOrderPage() {
     }
 
     setMessage('Ordinea a fost actualizata')
-    loadPerformances(selectedCompetition)
+    void loadPerformances(selectedCompetition)
   }
 
   const sortedRows = useMemo(() => {
@@ -269,19 +269,19 @@ export default function AdminRunningOrderPage() {
                         {performance.title}
                       </td>
                       <td className="p-3 text-sm">
-                        {performance.clubs?.name || '-'}
+                        {performance.clubs?.[0]?.name || '-'}
                       </td>
                       <td className="p-3 text-sm">
-                        {performance.categories?.dance_style || '-'}
+                        {performance.categories?.[0]?.dance_style || '-'}
                       </td>
                       <td className="p-3 text-sm">
-                        {performance.categories?.age_group || '-'}
+                        {performance.categories?.[0]?.age_group || '-'}
                       </td>
                       <td className="p-3 text-sm">
-                        {formatFormationType(performance.categories?.formation_type || null)}
+                        {formatFormationType(performance.categories?.[0]?.formation_type || null)}
                       </td>
                       <td className="p-3 text-sm">
-                        {performance.categories?.level || '-'}
+                        {performance.categories?.[0]?.level || '-'}
                       </td>
                     </tr>
                   ))}
