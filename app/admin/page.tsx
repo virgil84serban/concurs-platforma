@@ -82,10 +82,10 @@ function formatDuration(seconds: number | null) {
 }
 
 function buildCategoryLabel(performance: Performance) {
-  const danceStyle = performance.categories?.dance_style || '-'
-  const ageGroup = performance.categories?.age_group || '-'
-  const level = performance.categories?.level || '-'
-  const formationType = formatFormationType(performance.categories?.formation_type || null)
+  const danceStyle = performance.categories?.[0]?.dance_style || '-'
+  const ageGroup = performance.categories?.[0]?.age_group || '-'
+  const level = performance.categories?.[0]?.level || '-'
+  const formationType = formatFormationType(performance.categories?.[0]?.formation_type || null)
 
   return `${danceStyle} | ${ageGroup} | ${level} | ${formationType}`
 }
@@ -211,7 +211,7 @@ export default function AdminPage() {
       return
     }
 
-    const rows = (data as Performance[]) || []
+    const rows = (data as unknown as Performance[]) || []
     setPerformances(rows)
 
     const nextInputs: Record<string, string> = {}
