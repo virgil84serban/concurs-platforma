@@ -1,12 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+function getSupabaseEnv() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceRoleKey) {
-  throw new Error('Lipsesc variabilele de mediu pentru Supabase')
+  if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceRoleKey) {
+    throw new Error('Lipsesc variabilele de mediu pentru Supabase')
+  }
+
+  return {
+    supabaseUrl,
+    supabaseAnonKey,
+    supabaseServiceRoleKey,
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -28,6 +36,8 @@ export async function POST(req: NextRequest) {
         { status: 401 }
       )
     }
+
+    const { supabaseUrl, supabaseAnonKey, supabaseServiceRoleKey } = getSupabaseEnv()
 
     const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey)
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey)
