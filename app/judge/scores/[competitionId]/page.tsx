@@ -59,7 +59,7 @@ type ExistingScore = {
   performance_id: string
   judge_id: string
   criterion_id: string
-  value: number
+  score: number
 }
 
 type SubmissionRow = {
@@ -426,7 +426,7 @@ export default function JudgeCompetitionPage() {
 
         const { data: existingScores, error: existingScoresError } = await supabase
           .from('scores')
-          .select('performance_id, judge_id, criterion_id, value')
+          .select('performance_id, judge_id, criterion_id, score')
           .eq('judge_id', assignmentData.id)
           .in('performance_id', performanceIds)
 
@@ -440,7 +440,7 @@ export default function JudgeCompetitionPage() {
 
         ;((existingScores as ExistingScore[]) || []).forEach((score) => {
           nextScoreValues[buildScoreKey(score.performance_id, score.criterion_id)] =
-            String(score.value)
+            String(score.score)
         })
 
         setScoreValues(nextScoreValues)
@@ -718,7 +718,7 @@ export default function JudgeCompetitionPage() {
           performance_id: performance.id,
           judge_id: assignment.id,
           criterion_id: criterion.id,
-          value: numericValue,
+          score: numericValue,
         })
       }
 
