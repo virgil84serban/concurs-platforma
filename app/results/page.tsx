@@ -41,7 +41,7 @@ type ScoreRow = {
   judge_id: string
   performance_id: string
   criterion_id: string
-  value: number
+  score: number
 }
 
 type Criterion = {
@@ -266,20 +266,21 @@ export default function ResultsPage() {
   }
 
   async function loadCriteria(competitionId: string) {
-    const { data, error } = await supabase
-      .from('criteria')
-      .select('id, name, competition_id')
-      .eq('competition_id', competitionId)
-      .order('name')
+  const { data, error } = await supabase
+    .from('score_criteria')
+    .select('id, name, competition_id')
+    .eq('competition_id', competitionId)
+    .eq('is_active', true)
+    .order('sort_order', { ascending: true })
 
-    if (error) {
-      setMessage('Eroare la criterii: ' + error.message)
-      setCriteria([])
-      return
-    }
-
-    setCriteria((data as unknown as Criterion[]) || [])
+  if (error) {
+    setMessage('Eroare la criterii: ' + error.message)
+    setCriteria([])
+    return
   }
+
+  setCriteria((data as unknown as Criterion[]) || [])
+}
 
   async function loadPerformances(competitionId: string) {
     const { data, error } = await supabase
@@ -331,7 +332,7 @@ export default function ResultsPage() {
 
     const { data } = await supabase
       .from('scores')
-      .select('id, judge_id, performance_id, criterion_id, value')
+      .select('id, judge_id, performance_id, criterion_id, score')
       .in('judge_id', judgeIds)
 
     setScores((data as unknown as ScoreRow[]) || [])
@@ -391,7 +392,7 @@ export default function ResultsPage() {
 
     for (const c of relevantCriteria) {
       const scoresFor = performanceScores.filter((s) => s.criterion_id === c.id)
-      const sum = scoresFor.reduce((a, s) => a + Number(s.value || 0), 0)
+      const sum = scoresFor.reduce((a, s) => a + Number(s.score || 0), 0)
       criteriaAverages[c.id] = scoresFor.length ? sum / scoresFor.length : 0
     }
 
@@ -503,9 +504,11 @@ export default function ResultsPage() {
           </div>
         ) : (
           groupedResults.map((group) => {
-            const podiumRows = group.rows.filter(row => {
-  const override = rankingOverrides.find(o => o.performance_id === row.performanceId)
-  return override?.show_on_podium
+            const podiumRows = group.rows.filter((row) => {
+  const override = rankingOverrides.find(
+    (o) => o.performance_id === row.performanceId
+  )
+  return !!override?.show_on_podium
 })
 
             return (
