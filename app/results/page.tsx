@@ -375,81 +375,77 @@ export default function ResultsPage() {
   }, [message])
 
   const groupedResults = useMemo(() => {
-    const results: ResultRow[] = performances.map((performance) => {
-      const cat = performance.categories?.[0]
-      const club = performance.clubs?.[0]
+  const results: ResultRow[] = performances.map((performance) => {
+    const cat = performance.categories?.[0]
+    const club = performance.clubs?.[0]
 
-      const performanceScores = scores.filter((s) => s.performance_id === performance.id)
-      const judgeIds = Array.from(new Set(performanceScores.map((s) => s.judge_id)))
+    const performanceScores = scores.filter((s) => s.performance_id === performance.id)
+    const judgeIds = Array.from(new Set(performanceScores.map((s) => s.judge_id)))
 
-      const relevantCriteria =
-        cat?.formation_type === 'solo'
-          ? criteria.filter((c) => !isSyncCriterion(c.name))
-          : criteria
+    const relevantCriteria =
+      cat?.formation_type === 'solo'
+        ? criteria.filter((c) => !isSyncCriterion(c.name))
+        : criteria
 
-      const criteriaAverages: Record<string, number> = {}
+    const criteriaAverages: Record<string, number> = {}
 
-      for (const c of relevantCriteria) {
-        const scoresFor = performanceScores.filter((s) => s.criterion_id === c.id)
-        const sum = scoresFor.reduce((a, s) => a + Number(s.value || 0), 0)
-        criteriaAverages[c.id] = scoresFor.length ? sum / scoresFor.length : 0
-      }
-
-      const totalScore = Object.values(criteriaAverages).reduce((a, v) => a + v, 0)
-      const finalAverage = relevantCriteria.length ? totalScore / relevantCriteria.length : 0
-
-      return {
-        performanceId: performance.id,
-        runningOrder: performance.running_order,
-        title: performance.title,
-        clubName: club?.name || '-',
-        participantLabel: buildParticipantLabel(performance),
-        categoryLabel: buildCategoryLabel(performance),
-        categoryKey: performance.category_id || buildCategoryLabel(performance),
-        judgeCount: judgeIds.length,
-        criteriaAverages,
-        totalScore,
-        finalAverage,
-      }
-    })
-
-    const map = new Map<string, ResultRow[]>()
-
-    for (const r of results) {
-      if (!map.has(r.categoryKey)) map.set(r.categoryKey, [])
-      map.get(r.categoryKey)!.push(r)
+    for (const c of relevantCriteria) {
+      const scoresFor = performanceScores.filter((s) => s.criterion_id === c.id)
+      const sum = scoresFor.reduce((a, s) => a + Number(s.value || 0), 0)
+      criteriaAverages[c.id] = scoresFor.length ? sum / scoresFor.length : 0
     }
 
-    const groups = Array.from(map.entries()).map(([key, rows]) => {
-      const sortedRows = [...rows].sort((a, b) => {
-  const overrideA = rankingOverrides.find(o => o.performance_id === a.performanceId)
-  const overrideB = rankingOverrides.find(o => o.performance_id === b.performanceId)
+    const totalScore = Object.values(criteriaAverages).reduce((a, v) => a + v, 0)
+    const finalAverage = relevantCriteria.length ? totalScore / relevantCriteria.length : 0
 
-  if (overrideA && overrideB) {
-    return overrideA.manual_place - overrideB.manual_place
+    return {
+      performanceId: performance.id,
+      runningOrder: performance.running_order,
+      title: performance.title,
+      clubName: club?.name || '-',
+      participantLabel: buildParticipantLabel(performance),
+      categoryLabel: buildCategoryLabel(performance),
+      categoryKey: performance.category_id || buildCategoryLabel(performance),
+      judgeCount: judgeIds.length,
+      criteriaAverages,
+      totalScore,
+      finalAverage,
+    }
+  })
+
+  const map = new Map<string, ResultRow[]>()
+
+  for (const r of results) {
+    if (!map.has(r.categoryKey)) map.set(r.categoryKey, [])
+    map.get(r.categoryKey)!.push(r)
   }
 
-  if (overrideA) return -1
-  if (overrideB) return 1
+  const groups = Array.from(map.entries()).map(([key, rows]) => {
+    const sortedRows = [...rows].sort((a, b) => {
+      const overrideA = rankingOverrides.find((o) => o.performance_id === a.performanceId)
+      const overrideB = rankingOverrides.find((o) => o.performance_id === b.performanceId)
 
-  if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore
-  if (b.finalAverage !== a.finalAverage) return b.finalAverage - a.finalAverage
-  return (a.runningOrder || 999999) - (b.runningOrder || 999999)
-})
-        if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore
-        if (b.finalAverage !== a.finalAverage) return b.finalAverage - a.finalAverage
-        return (a.runningOrder || 999999) - (b.runningOrder || 999999)
-      })
-
-      return {
-        categoryKey: key,
-        categoryLabel: sortedRows[0]?.categoryLabel || '-',
-        rows: sortedRows,
+      if (overrideA && overrideB) {
+        return overrideA.manual_place - overrideB.manual_place
       }
+
+      if (overrideA) return -1
+      if (overrideB) return 1
+
+      if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore
+      if (b.finalAverage !== a.finalAverage) return b.finalAverage - a.finalAverage
+      return (a.runningOrder || 999999) - (b.runningOrder || 999999)
     })
 
-    return groups.sort((a, b) => a.categoryLabel.localeCompare(b.categoryLabel, 'ro'))
-  }, [performances, scores, criteria])
+    return {
+      categoryKey: key,
+      categoryLabel: sortedRows[0]?.categoryLabel || '-',
+      rows: sortedRows,
+    }
+  })
+
+  return groups.sort((a, b) => a.categoryLabel.localeCompare(b.categoryLabel, 'ro'))
+}, [performances, scores, criteria, rankingOverrides])
 
   if (loading) {
     return (
@@ -605,12 +601,16 @@ export default function ResultsPage() {
                             className={`border-b align-top ${highlightClass}`}
                           >
                             <td className="p-3 text-sm font-bold">
-                              const override = rankingOverrides.find(o => o.performance_id === row.performanceId)
+  {(() => {
+    const override = rankingOverrides.find(
+      (o) => o.performance_id === row.performanceId
+    )
 
-return override?.manual_place
-  ? `Locul ${override.manual_place}`
-  : getPlaceBadge(index)
-                            </td>
+    return override?.manual_place
+      ? `Locul ${override.manual_place}`
+      : getPlaceBadge(index)
+  })()}
+</td>
 
                             <td className="p-3 text-sm">{row.runningOrder || '-'}</td>
 
