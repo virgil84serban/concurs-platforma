@@ -39,28 +39,30 @@ type PerformanceRow = {
   }[] | null
 }
 
+type ScorePerformanceRow = {
+  id: string
+  title: string | null
+  competition_id: string | null
+  status: string | null
+  admin_status: string | null
+  running_order: number | null
+  choreographer_name: string | null
+  clubs: {
+    name: string | null
+  }[] | null
+  categories: {
+    formation_type: string | null
+    dance_style: string | null
+    age_group: string | null
+    level: string | null
+  }[] | null
+}
+
 type ScoreRow = {
   value: number
   performance_id: string
   criterion_id: string
-  performances?: {
-    id: string
-    title: string
-    competition_id: string
-    status: string | null
-    admin_status: string | null
-    running_order: number | null
-    choreographer_name: string | null
-    clubs?: {
-      name: string
-    } | null
-    categories?: {
-      formation_type: string | null
-      dance_style: string | null
-      age_group: string | null
-      level: string | null
-    } | null
-  } | null
+  performances: ScorePerformanceRow[] | null
 }
 
 type ResultRow = {
@@ -205,7 +207,7 @@ export default function AdminExportsPage() {
       setLoading(false)
     }
 
-    init()
+    void init()
   }, [router])
 
   const selectedCompetitionTitle = useMemo(() => {
@@ -258,14 +260,14 @@ export default function AdminExportsPage() {
 
     const rows = ((data as unknown as PerformanceRow[]) || []).map((item) => ({
       Id: item.running_order ?? '',
-      Club: item.clubs?.[0].name || '-',
-      Disciplina: item.categories?.[0].dance_style || '-',
-      Varsta: item.categories?.[0].age_group || '-',
-     Sectiune: formatFormationType(item.categories?.[0]?.formation_type || null),
-      Nivel: item.categories?.[0].level || '-',
+      Club: item.clubs?.[0]?.name || '-',
+      Disciplina: item.categories?.[0]?.dance_style || '-',
+      Varsta: item.categories?.[0]?.age_group || '-',
+      Sectiune: formatFormationType(item.categories?.[0]?.formation_type || null),
+      Nivel: item.categories?.[0]?.level || '-',
       Dansatori: item.group_name || item.participant_names || '-',
       'Nr. participanti': item.declared_participants_count ?? '',
-      Coregrafie: item.title,
+      Coregrafie: item.title || '-',
       Coregraf: item.choreographer_name || '-',
       'Tip Start': formatStartType(item.start_type),
       Timp: formatDuration(item.duration_seconds),
@@ -369,11 +371,11 @@ export default function AdminExportsPage() {
       return
     }
 
-    const allPerformances = (performancesData as PerformanceRow[]) || []
-    const allScores = (scoresData as ScoreRow[]) || []
+    const allPerformances = (performancesData as unknown as PerformanceRow[]) || []
+    const allScores = (scoresData as unknown as ScoreRow[]) || []
 
     const filteredScores = allScores.filter((score) => {
-      return score.performances?.competition_id === selectedCompetition
+      return score.performances?.[0]?.competition_id === selectedCompetition
     })
 
     const performanceMap = new Map<string, Omit<ResultRow, 'place' | 'group_title'>>()
@@ -381,12 +383,12 @@ export default function AdminExportsPage() {
     allPerformances.forEach((performance) => {
       performanceMap.set(performance.id, {
         performance_id: performance.id,
-        title: performance.title,
-        club: performance.clubs?.name || '-',
-        discipline: performance.categories?.dance_style || '-',
-        age: performance.categories?.age_group || '-',
-        level: performance.categories?.level || '-',
-        type: formatFormationType(performance.categories?.formation_type || '-'),
+        title: performance.title || '-',
+        club: performance.clubs?.[0]?.name || '-',
+        discipline: performance.categories?.[0]?.dance_style || '-',
+        age: performance.categories?.[0]?.age_group || '-',
+        level: performance.categories?.[0]?.level || '-',
+        type: formatFormationType(performance.categories?.[0]?.formation_type || '-'),
         running_order: performance.running_order ?? null,
         choreographer: performance.choreographer_name || '-',
         total: 0,
@@ -395,7 +397,7 @@ export default function AdminExportsPage() {
     })
 
     filteredScores.forEach((score) => {
-      const performance = score.performances
+      const performance = score.performances?.[0]
       if (!performance) return
 
       const existing = performanceMap.get(performance.id)
