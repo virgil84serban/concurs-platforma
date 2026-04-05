@@ -689,11 +689,11 @@ export default function JudgeCompetitionPage() {
 
       const formationType = performance.categories?.[0]?.formation_type || null
       const rowsToInsert: Array<{
-        performance_id: string
-        judge_id: string
-        criterion_id: string
-        value: number
-      }> = []
+  performance_id: string
+  judge_id: string
+  criterion_id: string
+  score: number
+}> = []
 
       for (const criterion of criteria) {
         if (isSoloFormation(formationType) && isSyncCriterionName(criterion.name)) {
