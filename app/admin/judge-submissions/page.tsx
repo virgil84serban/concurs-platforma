@@ -255,8 +255,8 @@ export default function AdminJudgeSubmissionsPage() {
 
         builtRows.push({
           judgeAssignmentId: judge.id,
-          judgeEmail: judge.profiles?.email || '-',
-          judgeName: judge.profiles?.full_name || '-',
+          judgeEmail: judge.profiles?.[0]?.email || '-',
+judgeName: judge.profiles?.[0]?.full_name || '-',
           performanceId: performance.id,
           runningOrder: performance.running_order,
           title: performance.title,
