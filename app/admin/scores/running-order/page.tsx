@@ -15,15 +15,39 @@ type Performance = {
   running_order: number | null
   duration_seconds: number | null
   choreographer_name: string | null
-  clubs?: {
+  clubs: {
     name: string
   } | null
-  categories?: {
+  categories: {
     formation_type: string | null
     dance_style: string | null
     age_group: string | null
     level: string | null
   } | null
+}
+
+type RawPerformance = {
+  id: string
+  title: string
+  competition_id: string
+  running_order: number | null
+  duration_seconds: number | null
+  choreographer_name: string | null
+  clubs?: { name: string | null }[] | { name: string | null } | null
+  categories?:
+    | {
+        formation_type: string | null
+        dance_style: string | null
+        age_group: string | null
+        level: string | null
+      }[]
+    | {
+        formation_type: string | null
+        dance_style: string | null
+        age_group: string | null
+        level: string | null
+      }
+    | null
 }
 
 function formatFormationType(value: string | null) {
@@ -56,6 +80,29 @@ function formatDuration(seconds: number | null) {
   return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
 }
 
+function normalizePerformance(row: RawPerformance): Performance {
+  const club = Array.isArray(row.clubs) ? row.clubs[0] : row.clubs
+  const category = Array.isArray(row.categories) ? row.categories[0] : row.categories
+
+  return {
+    id: row.id,
+    title: row.title,
+    competition_id: row.competition_id,
+    running_order: row.running_order,
+    duration_seconds: row.duration_seconds,
+    choreographer_name: row.choreographer_name,
+    clubs: club?.name ? { name: club.name } : null,
+    categories: category
+      ? {
+          formation_type: category.formation_type ?? null,
+          dance_style: category.dance_style ?? null,
+          age_group: category.age_group ?? null,
+          level: category.level ?? null,
+        }
+      : null,
+  }
+}
+
 export default function PublicRunningOrderPage() {
   const [competitions, setCompetitions] = useState<Competition[]>([])
   const [selectedCompetition, setSelectedCompetition] = useState('')
@@ -74,7 +121,7 @@ export default function PublicRunningOrderPage() {
       return
     }
 
-    setCompetitions((data as Competition[]) || [])
+    setCompetitions(((data ?? []) as Competition[]))
   }
 
   async function loadPerformances(competitionId: string) {
@@ -111,7 +158,9 @@ export default function PublicRunningOrderPage() {
       return
     }
 
-    setPerformances((data as Performance[]) || [])
+    const normalizedPerformances = ((data ?? []) as RawPerformance[]).map(normalizePerformance)
+
+    setPerformances(normalizedPerformances)
     setLoading(false)
   }
 

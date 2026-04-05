@@ -14,16 +14,16 @@ type Performance = {
   running_order: number | null
   status: string | null
   admin_status: string | null
-  clubs?: {
-    name: string
-  }[] | null
-  categories?: {
-    dance_style: string | null
-    age_group: string | null
-    formation_type: string | null
-    level: string | null
-  }[] | null
-}
+ clubs: {
+  name: string
+}[] | null
+
+categories: {
+  formation_type: string | null
+  dance_style: string | null
+  age_group: string | null
+  level: string | null
+}[] | null
 
 function formatFormationType(value: string | null) {
   if (!value) return '-'
