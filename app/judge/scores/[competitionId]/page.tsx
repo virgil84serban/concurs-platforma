@@ -23,6 +23,10 @@ type JudgeAssignment = {
   id: string
   user_id: string
   competition_id: string
+  profiles: {
+    full_name: string | null
+    email: string | null
+  }[] | null
 }
 
 type Performance = {

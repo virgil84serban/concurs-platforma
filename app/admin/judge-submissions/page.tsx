@@ -19,10 +19,10 @@ type JudgeAssignment = {
   id: string
   user_id: string
   competition_id: string
-  profiles?: {
+  profiles: {
     full_name: string | null
     email: string | null
-  } | null
+  }[] | null
 }
 
 type Performance = {
@@ -163,7 +163,7 @@ export default function AdminJudgeSubmissionsPage() {
       return
     }
 
-    const judgeAssignmentsData = (judgesData as JudgeAssignment[]) || []
+    const judgeAssignmentsData = (judgesData as unknown as JudgeAssignment[]) || []
     const approvedPerformances = (performancesData as Performance[]) || []
 
     setJudgeAssignments(judgeAssignmentsData)
