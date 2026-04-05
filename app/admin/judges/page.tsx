@@ -306,9 +306,14 @@ export default function AdminJudgesPage() {
 
     judge.profiles?.[0]?.full_name || judge.profiles?.[0]?.email || `user ${judge.user_id}`
 
-    const confirmDelete = window.confirm(
-      `Sigur vrei sa stergi juratul ${label} din concursul selectat?`
-    )
+    const label =
+  judge.profiles?.[0]?.full_name ||
+  judge.profiles?.[0]?.email ||
+  `user ${judge.user_id}`
+
+const confirmDelete = window.confirm(
+  `Sigur vrei sa stergi juratul ${label} din concursul selectat?`
+)
 
     if (!confirmDelete) {
       return
