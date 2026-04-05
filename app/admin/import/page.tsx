@@ -67,11 +67,13 @@ function mapRawRow(row: RawRow): ParsedRow {
     sectiune: String(getCell(row, ['Sectiune', 'Secțiune'])).trim(),
     nivel: String(getCell(row, ['Nivel'])).trim(),
     dansatori: String(getCell(row, ['Dansatori'])).trim(),
-    nrParticipanti: getCell(row, ['Nr. participanti', 'Nr participanti', 'Nr.D', 'Nr D']),
+    nrParticipanti: String(
+  getCell(row, ['Nr. participanti', 'Nr participanti', 'Nr.D', 'Nr D']) ?? ''
+).trim(),
     coregrafie: String(getCell(row, ['Coregrafie'])).trim(),
     coregraf: String(getCell(row, ['Coregraf'])).trim(),
     tipStart: String(getCell(row, ['Tip Start'])).trim(),
-    timp: getCell(row, ['Timp']),
+    timp: String(getCell(row, ['Timp'])).trim(),
   }
 }
 
