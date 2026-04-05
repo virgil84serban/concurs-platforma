@@ -1139,6 +1139,32 @@ export default function JudgeCompetitionPage() {
                 Pagina {currentPage} / {totalPages}
               </span>
 
+                        <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="text-sm text-gray-700">50 momente / pagina</div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+                className="rounded-lg border px-3 py-2 text-sm disabled:opacity-50"
+              >
+                Prima
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="rounded-lg border px-3 py-2 text-sm disabled:opacity-50"
+              >
+                Anterioara
+              </button>
+
+              <span className="px-2 text-sm text-gray-700">
+                Pagina {currentPage} / {totalPages}
+              </span>
+
               <button
                 type="button"
                 onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
@@ -1161,4 +1187,5 @@ export default function JudgeCompetitionPage() {
         </div>
       </div>
     </main>
-  }
+  )
+}
