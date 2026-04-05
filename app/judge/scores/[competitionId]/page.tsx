@@ -24,10 +24,6 @@ type JudgeAssignment = {
   id: string
   user_id: string
   competition_id: string
-  profiles: {
-    full_name: string | null
-    email: string | null
-  }[] | null
 }
 
 type Performance = {
@@ -224,8 +220,6 @@ const JudgeScoreRow = memo(function JudgeScoreRow({
           isSoloFormation(row.formationType) &&
           isSyncCriterionName(criterion.name)
 
-        const disabledBecauseOwnClub = row.isOwnClubConflict
-
         return (
           <td key={criterion.id} className="p-3 text-sm">
             {disabledForSolo ? (
@@ -241,7 +235,7 @@ const JudgeScoreRow = memo(function JudgeScoreRow({
                 onChange={(e) =>
                   onScoreChange(row.performanceId, criterion.id, e.target.value)
                 }
-                disabled={row.isSubmitted || disabledBecauseOwnClub}
+                disabled={row.isSubmitted || row.isOwnClubConflict}
                 className="w-20 rounded-lg border p-2 text-sm disabled:bg-gray-100 disabled:text-gray-500"
               />
             )}
@@ -1114,32 +1108,6 @@ export default function JudgeCompetitionPage() {
           </div>
 
           <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="text-sm text-gray-700">50 momente / pagina</div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setCurrentPage(1)}
-                disabled={currentPage === 1}
-                className="rounded-lg border px-3 py-2 text-sm disabled:opacity-50"
-              >
-                Prima
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-                className="rounded-lg border px-3 py-2 text-sm disabled:opacity-50"
-              >
-                Anterioara
-              </button>
-
-              <span className="px-2 text-sm text-gray-700">
-                Pagina {currentPage} / {totalPages}
-              </span>
-
-                        <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="text-sm text-gray-700">50 momente / pagina</div>
 
             <div className="flex flex-wrap items-center gap-2">
