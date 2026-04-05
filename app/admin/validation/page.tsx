@@ -9,13 +9,13 @@ type Performance = {
   admin_status: string | null
   music_file_path: string | null
   music_file_name: string | null
-  clubs?: { name: string }
+  clubs?: { name: string }[] | null
   categories?: {
     dance_style: string
     age_group: string
     formation_type: string
     level: string
-  }
+  }[] | null
 }
 
 export default function AdminValidationPage() {
@@ -44,11 +44,11 @@ export default function AdminValidationPage() {
       return
     }
 
-    setData(data || [])
+    setData((data as unknown as Performance[]) || [])
   }
 
   useEffect(() => {
-    loadData()
+    void loadData()
   }, [])
 
   async function getSignedUrl(path: string) {
@@ -80,7 +80,7 @@ export default function AdminValidationPage() {
     }
 
     setMessage('Status actualizat')
-    loadData()
+    void loadData()
   }
 
   return (
@@ -92,7 +92,7 @@ export default function AdminValidationPage() {
           <div>
             <p className="font-semibold">{item.title}</p>
             <p className="text-sm text-gray-500">
-              {item.clubs?.name} | {item.categories?.dance_style} | {item.categories?.age_group}
+              {item.clubs?.[0]?.name || '-'} | {item.categories?.[0]?.dance_style || '-'} | {item.categories?.[0]?.age_group || '-'}
             </p>
           </div>
 
