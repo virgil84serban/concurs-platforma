@@ -304,7 +304,7 @@ export default function AdminJudgesPage() {
       return
     }
 
-    const label = judge.profiles?.[0].full_name || judge.profiles?.email || `user ${judge.user_id}`
+    judge.profiles?.[0]?.full_name || judge.profiles?.[0]?.email || `user ${judge.user_id}`
 
     const confirmDelete = window.confirm(
       `Sigur vrei sa stergi juratul ${label} din concursul selectat?`
