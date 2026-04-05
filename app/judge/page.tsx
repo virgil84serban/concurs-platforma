@@ -18,7 +18,7 @@ type AssignedCompetition = {
     id: string
     title: string
     status?: string | null
-  } | null
+  }[] | null
 }
 
 export default function JudgeScoresPage() {
@@ -88,11 +88,11 @@ export default function JudgeScoresPage() {
         return
       }
 
-      setCompetitions((assignments as AssignedCompetition[]) || [])
+      setCompetitions((assignments as unknown as AssignedCompetition[]) || [])
       setLoading(false)
     }
 
-    init()
+    void init()
   }, [router])
 
   async function handleLogout() {
@@ -164,10 +164,10 @@ export default function JudgeScoresPage() {
                   {competitions.map((item) => (
                     <tr key={item.id} className="border-b">
                       <td className="p-3 text-sm">
-                        {item.competitions?.title || '-'}
+                        {item.competitions?.[0]?.title || '-'}
                       </td>
                       <td className="p-3 text-sm">
-                        {item.competitions?.status || '-'}
+                        {item.competitions?.[0]?.status || '-'}
                       </td>
                       <td className="p-3 text-sm">{item.competition_id}</td>
                       <td className="p-3 text-sm">
