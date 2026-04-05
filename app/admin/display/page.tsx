@@ -40,24 +40,26 @@ type Performance = {
 type ScoreRow = {
   value: number
   performance_id: string
-  performances?: {
-    id: string
-    title: string
-    competition_id: string | null
-    running_order: number | null
-    choreographer_name: string | null
-    participant_names: string | null
-    group_name: string | null
-    clubs?: {
-      name: string | null
-    } | null
-    categories?: {
-      formation_type: string | null
-      dance_style: string | null
-      age_group: string | null
-      level: string | null
-    } | null
-  } | null
+  performances:
+    | {
+        id: string
+        title: string | null
+        competition_id: string | null
+        running_order: number | null
+        choreographer_name: string | null
+        participant_names: string | null
+        group_name: string | null
+        clubs: {
+          name: string | null
+        }[] | null
+        categories: {
+          formation_type: string | null
+          dance_style: string | null
+          age_group: string | null
+          level: string | null
+        }[] | null
+      }[]
+    | null
 }
 
 type DisplayMode = 'running_order' | 'results' | 'pause'
@@ -119,7 +121,9 @@ function formatFormationType(value: string | null) {
   }
 }
 
-function getParticipantLabel(performance: Performance | ScoreRow['performances']) {
+function getParticipantLabel(
+  performance: Performance | ScoreRow['performances'][number] | null | undefined
+) {
   if (!performance) return '-'
   return performance.group_name || performance.participant_names || '-'
 }
@@ -130,12 +134,14 @@ function buildGroupData(item: {
     dance_style: string | null
     age_group: string | null
     level: string | null
-  } | null
+  }[] | null
 }) {
-  const discipline = item.categories?.dance_style || '-'
-  const age = item.categories?.age_group || '-'
-  const level = item.categories?.level || '-'
-  const type = formatFormationType(item.categories?.formation_type || null)
+  const firstCategory = item.categories?.[0] || null
+
+  const discipline = firstCategory?.dance_style || '-'
+  const age = firstCategory?.age_group || '-'
+  const level = firstCategory?.level || '-'
+  const type = formatFormationType(firstCategory?.formation_type || null)
   const groupKey = `${discipline}||${age}||${level}||${type}`
   const groupLabel = `${discipline} | ${age} | ${level} | ${type}`
 
@@ -320,14 +326,14 @@ export default function AdminDisplayPage() {
       return
     }
 
-    const scoreRows = ((scoresData as ScoreRow[]) || []).filter((item) => {
-      return item.performances?.competition_id === competitionId
+    const scoreRows = ((scoresData as unknown as ScoreRow[]) || []).filter((item) => {
+      return item.performances?.[0]?.competition_id === competitionId
     })
 
     const resultMap = new Map<string, ResultRow>()
 
     scoreRows.forEach((score) => {
-      const performance = score.performances
+      const performance = score.performances?.[0]
       if (!performance?.id) return
 
       const group = buildGroupData(performance)
@@ -339,7 +345,7 @@ export default function AdminDisplayPage() {
         resultMap.set(performance.id, {
           performance_id: performance.id,
           title: performance.title || '-',
-          club: performance.clubs?.[0]?.name|| '-',
+          club: performance.clubs?.[0]?.name || '-',
           choreographer: performance.choreographer_name || '-',
           total: Number(score.value),
           running_order: performance.running_order ?? null,
@@ -377,7 +383,7 @@ export default function AdminDisplayPage() {
       setLoading(false)
     }
 
-    init()
+    void init()
   }, [router])
 
   useEffect(() => {
@@ -387,7 +393,7 @@ export default function AdminDisplayPage() {
       return
     }
 
-    loadCompetitionData(displayState.competitionId)
+    void loadCompetitionData(displayState.competitionId)
   }, [displayState.competitionId])
 
   useEffect(() => {
@@ -429,15 +435,16 @@ export default function AdminDisplayPage() {
   }, [competitions, displayState.competitionId])
 
   const currentPerformance = useMemo(() => {
-    return performances.find(
-      (item) => item.running_order === displayState.currentRunningOrder
-    ) || null
+    return (
+      performances.find((item) => item.running_order === displayState.currentRunningOrder) || null
+    )
   }, [performances, displayState.currentRunningOrder])
 
   const nextPerformance = useMemo(() => {
-    return performances.find(
-      (item) => item.running_order === displayState.currentRunningOrder + 1
-    ) || null
+    return (
+      performances.find((item) => item.running_order === displayState.currentRunningOrder + 1) ||
+      null
+    )
   }, [performances, displayState.currentRunningOrder])
 
   const selectedGroupResults = useMemo(() => {
@@ -596,7 +603,9 @@ export default function AdminDisplayPage() {
               {currentPerformance ? (
                 <>
                   <p className="font-semibold">{currentPerformance.title}</p>
-                  <p className="text-sm text-gray-600">{currentPerformance.clubs?.name || '-'}</p>
+                  <p className="text-sm text-gray-600">
+                    {currentPerformance.clubs?.[0]?.name || '-'}
+                  </p>
                   <p className="text-sm text-gray-600">
                     {buildGroupData(currentPerformance).groupLabel}
                   </p>
@@ -614,7 +623,9 @@ export default function AdminDisplayPage() {
               {nextPerformance ? (
                 <>
                   <p className="font-semibold">{nextPerformance.title}</p>
-                  <p className="text-sm text-gray-600">{nextPerformance.clubs?.name || '-'}</p>
+                  <p className="text-sm text-gray-600">
+                    {nextPerformance.clubs?.[0]?.name || '-'}
+                  </p>
                   <p className="text-sm text-gray-600">
                     {buildGroupData(nextPerformance).groupLabel}
                   </p>
