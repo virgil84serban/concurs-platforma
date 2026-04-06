@@ -337,56 +337,78 @@ export default function AdminJudgesPage() {
   }
 
   async function handleDeleteJudge(judge: AssignedJudge) {
-    setPageMessage('')
+  setPageMessage('')
 
-    if (!selectedCompetitionId) {
-      setPageMessage('Selecteaza un concurs.')
-      return
-    }
-
-    const label =
-      judge.profiles?.[0]?.full_name ||
-      judge.profiles?.[0]?.email ||
-      `user ${judge.user_id}`
-
-    const confirmDelete = window.confirm(
-      `Sigur vrei sa stergi juratul ${label} din concursul selectat?`
-    )
-
-    if (!confirmDelete) {
-      return
-    }
-
-    try {
-      setDeletingJudgeId(judge.id)
-
-      const { error } = await supabase.from('judges').delete().eq('id', judge.id)
-
-      if (error) {
-        setPageMessage('Eroare la stergerea juratului: ' + error.message)
-        return
-      }
-
-      setPageMessage('Juratul a fost sters din concurs.')
-
-      setPasswordInputs((prev) => {
-        const next = { ...prev }
-        delete next[judge.user_id]
-        return next
-      })
-
-      setSelectedJudgeIds((prev) => prev.filter((id) => id !== judge.id))
-
-      await loadAssignedJudges(selectedCompetitionId)
-    } catch (error) {
-      setPageMessage(
-        error instanceof Error ? error.message : 'A aparut o eroare necunoscuta.'
-      )
-    } finally {
-      setDeletingJudgeId(null)
-    }
+  if (!selectedCompetitionId) {
+    setPageMessage('Selecteaza un concurs.')
+    return
   }
 
+  const label =
+    judge.profiles?.[0]?.full_name ||
+    judge.profiles?.[0]?.email ||
+    `user ${judge.user_id}`
+
+  const confirmDelete = window.confirm(
+    `Sigur vrei sa stergi juratul ${label} din concursul selectat? Se vor sterge si scorurile / submit-urile lui din acest concurs.`
+  )
+
+  if (!confirmDelete) {
+    return
+  }
+
+  try {
+    setDeletingJudgeId(judge.id)
+
+    const { error: submissionsError } = await supabase
+      .from('judge_score_submissions')
+      .delete()
+      .eq('judge_id', judge.id)
+
+    if (submissionsError) {
+      setPageMessage('Eroare la stergerea submit-urilor juratului: ' + submissionsError.message)
+      return
+    }
+
+    const { error: scoresError } = await supabase
+      .from('scores')
+      .delete()
+      .eq('judge_id', judge.id)
+
+    if (scoresError) {
+      setPageMessage('Eroare la stergerea scorurilor juratului: ' + scoresError.message)
+      return
+    }
+
+    const { error: judgeDeleteError } = await supabase
+      .from('judges')
+      .delete()
+      .eq('id', judge.id)
+
+    if (judgeDeleteError) {
+      setPageMessage('Eroare la stergerea juratului: ' + judgeDeleteError.message)
+      return
+    }
+
+    setPageMessage('Juratul a fost sters din concurs impreuna cu scorurile si submit-urile lui.')
+
+    setPasswordInputs((prev) => {
+      const next = { ...prev }
+      delete next[judge.user_id]
+      return next
+    })
+
+    setSelectedJudgeIds((prev) => prev.filter((id) => id !== judge.id))
+
+    await loadAssignedJudges(selectedCompetitionId)
+  } catch (error) {
+    setPageMessage(
+      error instanceof Error ? error.message : 'A aparut o eroare necunoscuta.'
+    )
+  } finally {
+    setDeletingJudgeId(null)
+  }
+}
   async function handleMoveJudge(judge: AssignedJudge) {
     setPageMessage('')
 
@@ -578,57 +600,77 @@ export default function AdminJudgesPage() {
   }
 
   async function handleBulkDeleteJudges() {
-    setPageMessage('')
+  setPageMessage('')
 
-    if (!selectedCompetitionId) {
-      setPageMessage('Selecteaza un concurs.')
-      return
-    }
-
-    if (selectedJudgeIds.length === 0) {
-      setPageMessage('Selecteaza cel putin un jurat.')
-      return
-    }
-
-    const selectedJudges = assignedJudges.filter((judge) =>
-      selectedJudgeIds.includes(judge.id)
-    )
-
-    const confirmDelete = window.confirm(
-      `Sigur vrei sa stergi ${selectedJudges.length} jurati din acest concurs?`
-    )
-
-    if (!confirmDelete) {
-      return
-    }
-
-    try {
-      setBulkMoving(true)
-
-      const idsToDelete = selectedJudges.map((judge) => judge.id)
-
-      const { error } = await supabase
-        .from('judges')
-        .delete()
-        .in('id', idsToDelete)
-
-      if (error) {
-        setPageMessage('Eroare la stergerea juratilor: ' + error.message)
-        return
-      }
-
-      setPageMessage(`${idsToDelete.length} jurati au fost stersi.`)
-
-      setSelectedJudgeIds([])
-      await loadAssignedJudges(selectedCompetitionId)
-    } catch (error) {
-      setPageMessage(
-        error instanceof Error ? error.message : 'A aparut o eroare necunoscuta.'
-      )
-    } finally {
-      setBulkMoving(false)
-    }
+  if (!selectedCompetitionId) {
+    setPageMessage('Selecteaza un concurs.')
+    return
   }
+
+  if (selectedJudgeIds.length === 0) {
+    setPageMessage('Selecteaza cel putin un jurat.')
+    return
+  }
+
+  const selectedJudges = assignedJudges.filter((judge) =>
+    selectedJudgeIds.includes(judge.id)
+  )
+
+  const confirmDelete = window.confirm(
+    `Sigur vrei sa stergi ${selectedJudges.length} jurati din acest concurs? Se vor sterge si scorurile / submit-urile lor.`
+  )
+
+  if (!confirmDelete) {
+    return
+  }
+
+  try {
+    setBulkMoving(true)
+
+    const idsToDelete = selectedJudges.map((judge) => judge.id)
+
+    const { error: submissionsError } = await supabase
+      .from('judge_score_submissions')
+      .delete()
+      .in('judge_id', idsToDelete)
+
+    if (submissionsError) {
+      setPageMessage('Eroare la stergerea submit-urilor juratilor: ' + submissionsError.message)
+      return
+    }
+
+    const { error: scoresError } = await supabase
+      .from('scores')
+      .delete()
+      .in('judge_id', idsToDelete)
+
+    if (scoresError) {
+      setPageMessage('Eroare la stergerea scorurilor juratilor: ' + scoresError.message)
+      return
+    }
+
+    const { error: judgesError } = await supabase
+      .from('judges')
+      .delete()
+      .in('id', idsToDelete)
+
+    if (judgesError) {
+      setPageMessage('Eroare la stergerea juratilor: ' + judgesError.message)
+      return
+    }
+
+    setPageMessage(`${idsToDelete.length} jurati au fost stersi impreuna cu scorurile si submit-urile lor.`)
+
+    setSelectedJudgeIds([])
+    await loadAssignedJudges(selectedCompetitionId)
+  } catch (error) {
+    setPageMessage(
+      error instanceof Error ? error.message : 'A aparut o eroare necunoscuta.'
+    )
+  } finally {
+    setBulkMoving(false)
+  }
+}
 
   async function handleUpdatePassword(judge: AssignedJudge) {
     setPageMessage('')
