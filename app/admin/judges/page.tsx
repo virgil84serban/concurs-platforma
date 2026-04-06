@@ -60,6 +60,67 @@ export default function AdminJudgesPage() {
   const [bulkMoving, setBulkMoving] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
 
+  const availableMoveCompetitions = useMemo(() => {
+    return competitions.filter(
+      (competition) => competition.id !== selectedCompetitionId
+    )
+  }, [competitions, selectedCompetitionId])
+
+  const filteredAssignedJudges = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase()
+
+    if (!term) {
+      return assignedJudges
+    }
+
+    return assignedJudges.filter((judge) => {
+      const fullName = (judge.profiles?.[0]?.full_name || '').toLowerCase()
+      const email = (judge.profiles?.[0]?.email || '').toLowerCase()
+      const userId = (judge.user_id || '').toLowerCase()
+
+      return (
+        fullName.includes(term) ||
+        email.includes(term) ||
+        userId.includes(term)
+      )
+    })
+  }, [assignedJudges, searchTerm])
+
+  const allVisibleJudgeIds = useMemo(() => {
+    return filteredAssignedJudges.map((judge) => judge.id)
+  }, [filteredAssignedJudges])
+
+  const areAllVisibleSelected =
+    allVisibleJudgeIds.length > 0 &&
+    allVisibleJudgeIds.every((id) => selectedJudgeIds.includes(id))
+
+  function toggleJudgeSelection(judgeId: string) {
+    setSelectedJudgeIds((prev) =>
+      prev.includes(judgeId)
+        ? prev.filter((id) => id !== judgeId)
+        : [...prev, judgeId]
+    )
+  }
+
+  function toggleSelectAllVisible() {
+    if (areAllVisibleSelected) {
+      setSelectedJudgeIds((prev) =>
+        prev.filter((id) => !allVisibleJudgeIds.includes(id))
+      )
+      return
+    }
+
+    setSelectedJudgeIds((prev) => {
+      const next = new Set(prev)
+      allVisibleJudgeIds.forEach((id) => next.add(id))
+      return Array.from(next)
+    })
+  }
+
+  function generatePassword() {
+    return 'Jurat' + Math.floor(1000 + Math.random() * 9000) + '!'
+  }
+
   async function loadSessionAndProfile() {
     const { data: sessionData } = await supabase.auth.getSession()
 
@@ -101,7 +162,12 @@ export default function AdminJudgesPage() {
       return
     }
 
-    setCompetitions((data as Competition[]) || [])
+    const rows = (data as Competition[]) || []
+    setCompetitions(rows)
+
+    if (rows.length > 0) {
+      setSelectedCompetitionId((prev) => prev || rows[0].id)
+    }
   }
 
   async function loadAssignedJudges(competitionId: string) {
@@ -110,35 +176,68 @@ export default function AdminJudgesPage() {
       return
     }
 
-    const { data, error } = await supabase
+    const { data: judgesData, error: judgesError } = await supabase
       .from('judges')
-      .select(`
-        id,
-        user_id,
-        competition_id,
-        profiles (
-          id,
-          full_name,
-          email,
-          role
-        )
-      `)
+      .select('id, user_id, competition_id')
       .eq('competition_id', competitionId)
       .order('id', { ascending: true })
 
-    if (error) {
-      setPageMessage('Eroare la incarcarea juratilor: ' + error.message)
+    if (judgesError) {
+      setPageMessage('Eroare la incarcarea juratilor: ' + judgesError.message)
       setAssignedJudges([])
       return
     }
 
-    const judges = ((data as unknown as AssignedJudge[]) || []).sort((a, b) => {
+    const judgeRows = (judgesData as AssignedJudge[]) || []
+
+    if (judgeRows.length === 0) {
+      setAssignedJudges([])
+      return
+    }
+
+    const userIds = judgeRows.map((j) => j.user_id)
+
+    const { data: profilesData, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, full_name, email, role')
+      .in('id', userIds)
+
+    if (profilesError) {
+      setPageMessage('Eroare la profiluri: ' + profilesError.message)
+      setAssignedJudges([])
+      return
+    }
+
+    const profilesMap: Record<string, AssignedJudge['profiles']> = {}
+
+    ;((profilesData as Array<{
+      id: string
+      full_name: string | null
+      email: string | null
+      role: string | null
+    }>) || []).forEach((p) => {
+      profilesMap[p.id] = [
+        {
+          id: p.id,
+          full_name: p.full_name,
+          email: p.email,
+          role: p.role,
+        },
+      ]
+    })
+
+    const merged: AssignedJudge[] = judgeRows.map((j) => ({
+      ...j,
+      profiles: profilesMap[j.user_id] || null,
+    }))
+
+    merged.sort((a, b) => {
       const emailA = a.profiles?.[0]?.email || ''
       const emailB = b.profiles?.[0]?.email || ''
       return emailA.localeCompare(emailB, 'ro')
     })
 
-    setAssignedJudges(judges)
+    setAssignedJudges(merged)
   }
 
   useEffect(() => {
@@ -168,65 +267,6 @@ export default function AdminJudgesPage() {
     setSearchTerm('')
     loadAssignedJudges(selectedCompetitionId)
   }, [selectedCompetitionId])
-
-  const availableMoveCompetitions = useMemo(() => {
-    return competitions.filter((competition) => competition.id !== selectedCompetitionId)
-  }, [competitions, selectedCompetitionId])
-
-  const filteredAssignedJudges = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase()
-
-    if (!term) {
-      return assignedJudges
-    }
-
-    return assignedJudges.filter((judge) => {
-      const fullName = (judge.profiles?.[0]?.full_name || '').toLowerCase()
-      const email = (judge.profiles?.[0]?.email || '').toLowerCase()
-      const userId = (judge.user_id || '').toLowerCase()
-
-      return (
-        fullName.includes(term) ||
-        email.includes(term) ||
-        userId.includes(term)
-      )
-    })
-  }, [assignedJudges, searchTerm])
-
-  const allVisibleJudgeIds = useMemo(() => {
-    return filteredAssignedJudges.map((judge) => judge.id)
-  }, [filteredAssignedJudges])
-
-  const areAllVisibleSelected =
-    allVisibleJudgeIds.length > 0 &&
-    allVisibleJudgeIds.every((id) => selectedJudgeIds.includes(id))
-
-  function generatePassword() {
-    return 'Jurat' + Math.floor(1000 + Math.random() * 9000) + '!'
-  }
-
-  function toggleJudgeSelection(judgeId: string) {
-    setSelectedJudgeIds((prev) =>
-      prev.includes(judgeId)
-        ? prev.filter((id) => id !== judgeId)
-        : [...prev, judgeId]
-    )
-  }
-
-  function toggleSelectAllVisible() {
-    if (areAllVisibleSelected) {
-      setSelectedJudgeIds((prev) =>
-        prev.filter((id) => !allVisibleJudgeIds.includes(id))
-      )
-      return
-    }
-
-    setSelectedJudgeIds((prev) => {
-      const next = new Set(prev)
-      allVisibleJudgeIds.forEach((id) => next.add(id))
-      return Array.from(next)
-    })
-  }
 
   async function handleGenerateJudges() {
     setPageMessage('')
@@ -304,16 +344,14 @@ export default function AdminJudgesPage() {
       return
     }
 
-    judge.profiles?.[0]?.full_name || judge.profiles?.[0]?.email || `user ${judge.user_id}`
-
     const label =
-  judge.profiles?.[0]?.full_name ||
-  judge.profiles?.[0]?.email ||
-  `user ${judge.user_id}`
+      judge.profiles?.[0]?.full_name ||
+      judge.profiles?.[0]?.email ||
+      `user ${judge.user_id}`
 
-const confirmDelete = window.confirm(
-  `Sigur vrei sa stergi juratul ${label} din concursul selectat?`
-)
+    const confirmDelete = window.confirm(
+      `Sigur vrei sa stergi juratul ${label} din concursul selectat?`
+    )
 
     if (!confirmDelete) {
       return
@@ -371,7 +409,10 @@ const confirmDelete = window.confirm(
       (competition) => competition.id === moveTargetCompetitionId
     )
 
-    const label = judge.profiles?.[0]?.full_name || judge.profiles?.[0]?.email || `user ${judge.user_id}`
+    const label =
+      judge.profiles?.[0]?.full_name ||
+      judge.profiles?.[0]?.email ||
+      `user ${judge.user_id}`
 
     const confirmMove = window.confirm(
       `Sigur vrei sa muti juratul ${label} in concursul "${targetCompetition?.title || '-'}"?`
