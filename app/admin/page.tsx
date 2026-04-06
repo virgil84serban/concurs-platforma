@@ -92,6 +92,16 @@ type JudgeProfile = {
   name?: string | null
   role: string
 }
+type RankingOverride = {
+  id?: string
+  competition_id: string
+  category_id: string | null
+  performance_id: string
+  manual_place: number
+  show_on_podium: boolean
+  podium_label: string | null
+  notes?: string | null
+}
 
 function formatFormationType(value: string | null) {
   if (!value) return '-'
@@ -182,6 +192,13 @@ export default function AdminPage() {
   const [criteria, setCriteria] = useState<ScoreCriterion[]>([])
   const [judgeProfiles, setJudgeProfiles] = useState<JudgeProfile[]>([])
   const [judges, setJudges] = useState<JudgeAssignment[]>([])
+const [rankingOverrides, setRankingOverrides] = useState<RankingOverride[]>([])
+
+const [overridePerformanceId, setOverridePerformanceId] = useState('')
+const [overrideManualPlace, setOverrideManualPlace] = useState('')
+const [overrideShowOnPodium, setOverrideShowOnPodium] = useState(false)
+const [overridePodiumLabel, setOverridePodiumLabel] = useState('')
+const [editingOverridePerformanceId, setEditingOverridePerformanceId] = useState<string | null>(null)
 
   const [competitionTitle, setCompetitionTitle] = useState('')
   const [competitionStatus, setCompetitionStatus] = useState<'open' | 'finished'>('open')
@@ -318,12 +335,13 @@ export default function AdminPage() {
     setJudgeProfiles((data as JudgeProfile[]) || [])
   }
 
-  async function loadCompetitionData(competitionId: string) {
+    async function loadCompetitionData(competitionId: string) {
     if (!competitionId) {
       setCategories([])
       setPerformances([])
       setCriteria([])
       setJudges([])
+      setRankingOverrides([])
       return
     }
 
@@ -332,12 +350,14 @@ export default function AdminPage() {
       performancesRes,
       criteriaRes,
       judgesRes,
+      rankingOverridesRes,
     ] = await Promise.all([
       supabase
         .from('categories')
         .select('id, competition_id, name, formation_type, dance_style, age_group, level')
         .eq('competition_id', competitionId)
         .order('dance_style', { ascending: true }),
+
       supabase
         .from('performances')
         .select(`
@@ -366,11 +386,13 @@ export default function AdminPage() {
           )
         `)
         .eq('competition_id', competitionId),
+
       supabase
         .from('score_criteria')
         .select('id, competition_id, name, weight, min_score, max_score, sort_order, is_active')
         .eq('competition_id', competitionId)
         .order('sort_order', { ascending: true }),
+
       supabase
         .from('judges')
         .select(`
@@ -383,6 +405,11 @@ export default function AdminPage() {
             name
           )
         `)
+        .eq('competition_id', competitionId),
+
+      supabase
+        .from('ranking_overrides')
+        .select('id, competition_id, category_id, performance_id, manual_place, show_on_podium, podium_label, notes')
         .eq('competition_id', competitionId),
     ])
 
@@ -408,6 +435,12 @@ export default function AdminPage() {
       setMessage('Eroare la jurati: ' + judgesRes.error.message)
     } else {
       setJudges((judgesRes.data as unknown as JudgeAssignment[]) || [])
+    }
+
+    if (rankingOverridesRes.error) {
+      setMessage('Eroare la ranking override: ' + rankingOverridesRes.error.message)
+    } else {
+      setRankingOverrides((rankingOverridesRes.data as RankingOverride[]) || [])
     }
   }
 
@@ -463,6 +496,14 @@ export default function AdminPage() {
     setEditingCriterionId(null)
   }
 
+  function resetRankingOverrideForm() {
+    setOverridePerformanceId('')
+    setOverrideManualPlace('')
+    setOverrideShowOnPodium(false)
+    setOverridePodiumLabel('')
+    setEditingOverridePerformanceId(null)
+  }
+
   function startEditCompetition(item: Competition) {
     setCompetitionTitle(item.title || '')
     setCompetitionStatus((item.status as 'open' | 'finished') || 'open')
@@ -515,6 +556,14 @@ export default function AdminPage() {
     setCriterionSortOrder(String(item.sort_order ?? 1))
     setCriterionIsActive(!!item.is_active)
     setEditingCriterionId(item.id)
+  }
+
+  function startEditRankingOverride(item: RankingOverride) {
+    setOverridePerformanceId(item.performance_id)
+    setOverrideManualPlace(String(item.manual_place))
+    setOverrideShowOnPodium(!!item.show_on_podium)
+    setOverridePodiumLabel(item.podium_label || '')
+    setEditingOverridePerformanceId(item.performance_id)
   }
 
   async function saveCompetition() {
@@ -839,6 +888,59 @@ export default function AdminPage() {
     setSaving(false)
   }
 
+  async function saveRankingOverride() {
+    if (!selectedCompetitionId) {
+      setMessage('Selecteaza concursul.')
+      return
+    }
+
+    if (!overridePerformanceId) {
+      setMessage('Selecteaza momentul.')
+      return
+    }
+
+    const manualPlaceNumber = Number(overrideManualPlace)
+
+    if (!Number.isInteger(manualPlaceNumber) || manualPlaceNumber < 1) {
+      setMessage('Locul manual trebuie sa fie un numar intreg mai mare decat 0.')
+      return
+    }
+
+    const selectedPerformance = performances.find((item) => item.id === overridePerformanceId)
+
+    if (!selectedPerformance) {
+      setMessage('Momentul selectat nu exista.')
+      return
+    }
+
+    setSaving(true)
+    setMessage('')
+
+    const payload = {
+      competition_id: selectedCompetitionId,
+      category_id: selectedPerformance.category_id || null,
+      performance_id: overridePerformanceId,
+      manual_place: manualPlaceNumber,
+      show_on_podium: overrideShowOnPodium,
+      podium_label: overridePodiumLabel.trim() || null,
+    }
+
+    const { error } = await supabase
+      .from('ranking_overrides')
+      .upsert(payload, { onConflict: 'competition_id,performance_id' })
+
+    if (error) {
+      setMessage('Eroare la salvarea ranking override: ' + error.message)
+      setSaving(false)
+      return
+    }
+
+    setMessage('Ranking override salvat.')
+    resetRankingOverrideForm()
+    await loadCompetitionData(selectedCompetitionId)
+    setSaving(false)
+  }
+
   async function addDefaultCriteria(setName: 'A' | 'B') {
     if (!selectedCompetitionId) {
       setMessage('Selecteaza concursul.')
@@ -1035,6 +1137,33 @@ export default function AdminPage() {
 
     setMessage('Criteriu sters.')
     resetCriterionForm()
+    await loadCompetitionData(selectedCompetitionId)
+    setSaving(false)
+  }
+
+  async function deleteRankingOverride(performanceId: string) {
+    if (!selectedCompetitionId) return
+
+    const confirmed = window.confirm('Sigur vrei sa stergi ranking override pentru acest moment?')
+    if (!confirmed) return
+
+    setSaving(true)
+    setMessage('')
+
+    const { error } = await supabase
+      .from('ranking_overrides')
+      .delete()
+      .eq('competition_id', selectedCompetitionId)
+      .eq('performance_id', performanceId)
+
+    if (error) {
+      setMessage('Eroare la stergerea ranking override: ' + error.message)
+      setSaving(false)
+      return
+    }
+
+    setMessage('Ranking override sters.')
+    resetRankingOverrideForm()
     await loadCompetitionData(selectedCompetitionId)
     setSaving(false)
   }
@@ -1339,8 +1468,137 @@ export default function AdminPage() {
           <>
             <div className="grid gap-6 xl:grid-cols-2">
               <section className="rounded-xl bg-white p-5 shadow">
-                <h2 className="mb-4 text-xl font-bold">Categorii</h2>
 
+                <h2 className="mb-4 text-xl font-bold">Categorii</h2>
+            <section className="rounded-xl bg-white p-5 shadow">
+              <h2 className="mb-4 text-xl font-bold">Ranking override</h2>
+
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Moment</label>
+                  <select
+                    value={overridePerformanceId}
+                    onChange={(e) => setOverridePerformanceId(e.target.value)}
+                    className="w-full rounded-lg border p-3"
+                  >
+                    <option value="">Selecteaza momentul</option>
+                    {selectedCompetitionPerformances.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        #{item.running_order || '-'} - {item.title || '-'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Loc manual</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={overrideManualPlace}
+                    onChange={(e) => setOverrideManualPlace(e.target.value)}
+                    className="w-full rounded-lg border p-3"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Podium label</label>
+                  <input
+                    value={overridePodiumLabel}
+                    onChange={(e) => setOverridePodiumLabel(e.target.value)}
+                    placeholder="Ex: Locul 4 / Premiul special"
+                    className="w-full rounded-lg border p-3"
+                  />
+                </div>
+
+                <div className="flex items-center gap-3 pt-8">
+                  <input
+                    id="override-show-on-podium"
+                    type="checkbox"
+                    checked={overrideShowOnPodium}
+                    onChange={(e) => setOverrideShowOnPodium(e.target.checked)}
+                  />
+                  <label htmlFor="override-show-on-podium" className="text-sm font-medium">
+                    Afiseaza pe podium
+                  </label>
+                </div>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={saveRankingOverride}
+                  disabled={saving}
+                  className="rounded-lg bg-black px-5 py-3 text-white disabled:opacity-50"
+                >
+                  {editingOverridePerformanceId ? 'Salveaza override' : 'Creeaza override'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={resetRankingOverrideForm}
+                  className="rounded-lg border px-5 py-3"
+                >
+                  Reset
+                </button>
+              </div>
+
+              <div className="mt-6 overflow-x-auto">
+                <table className="min-w-full border-collapse">
+                  <thead>
+                    <tr className="border-b bg-gray-50 text-left">
+                      <th className="p-3 text-sm font-semibold">Moment</th>
+                      <th className="p-3 text-sm font-semibold">Loc manual</th>
+                      <th className="p-3 text-sm font-semibold">Pe podium</th>
+                      <th className="p-3 text-sm font-semibold">Podium label</th>
+                      <th className="p-3 text-sm font-semibold">Actiuni</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rankingOverrides.map((item) => {
+                      const performance = performances.find((p) => p.id === item.performance_id)
+
+                      return (
+                        <tr key={item.performance_id} className="border-b">
+                          <td className="p-3 text-sm font-medium">
+                            #{performance?.running_order || '-'} - {performance?.title || item.performance_id}
+                          </td>
+                          <td className="p-3 text-sm">{item.manual_place}</td>
+                          <td className="p-3 text-sm">{item.show_on_podium ? 'Da' : 'Nu'}</td>
+                          <td className="p-3 text-sm">{item.podium_label || '-'}</td>
+                          <td className="p-3 text-sm">
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                onClick={() => startEditRankingOverride(item)}
+                                className="rounded-lg border px-3 py-2"
+                              >
+                                Editeaza
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => deleteRankingOverride(item.performance_id)}
+                                className="rounded-lg border px-3 py-2 text-red-600"
+                              >
+                                Sterge
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+
+                    {rankingOverrides.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="p-4 text-sm text-gray-500">
+                          Nu exista ranking override pentru concursul selectat.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <label className="mb-1 block text-sm font-medium">Nume categorie</label>
