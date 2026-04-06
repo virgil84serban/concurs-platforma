@@ -22,20 +22,10 @@ export async function POST(req: NextRequest) {
     const authHeader = req.headers.get('authorization')
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Unauthorized - lipseste Bearer token' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const accessToken = authHeader.replace('Bearer ', '').trim()
-
-    if (!accessToken) {
-      return NextResponse.json(
-        { error: 'Unauthorized - token gol' },
-        { status: 401 }
-      )
-    }
 
     const { supabaseUrl, supabaseAnonKey, supabaseServiceRoleKey } = getSupabaseEnv()
 
@@ -44,202 +34,103 @@ export async function POST(req: NextRequest) {
 
     const {
       data: { user: requester },
-      error: requesterError,
     } = await supabaseAuth.auth.getUser(accessToken)
 
-    if (requesterError || !requester) {
-      return NextResponse.json(
-        {
-          error: 'Unauthorized - token invalid',
-          details: requesterError?.message || null,
-        },
-        { status: 401 }
-      )
+    if (!requester) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data: requesterProfile, error: requesterProfileError } = await supabaseAdmin
+    const { data: requesterProfile } = await supabaseAdmin
       .from('profiles')
-      .select('id, email, role')
+      .select('role')
       .eq('id', requester.id)
-      .maybeSingle()
+      .single()
 
-    if (requesterProfileError) {
-      return NextResponse.json(
-        {
-          error: 'Forbidden - profilul admin nu a putut fi citit',
-          details: requesterProfileError.message,
-          requesterId: requester.id,
-          requesterEmail: requester.email || null,
-        },
-        { status: 403 }
-      )
-    }
-
-    if (!requesterProfile) {
-      return NextResponse.json(
-        {
-          error: 'Forbidden - profilul userului nu exista in tabela profiles',
-          requesterId: requester.id,
-          requesterEmail: requester.email || null,
-        },
-        { status: 403 }
-      )
-    }
-
-    if (requesterProfile.role !== 'admin') {
-      return NextResponse.json(
-        {
-          error: 'Forbidden - userul nu este admin',
-          requesterId: requester.id,
-          requesterEmail: requester.email || null,
-          profileRole: requesterProfile.role,
-        },
-        { status: 403 }
-      )
+    if (!requesterProfile || requesterProfile.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const body = await req.json()
-    const competitionId =
-      typeof body?.competitionId === 'string' ? body.competitionId.trim() : ''
+    const competitionId = body?.competitionId
 
-    if (!competitionId) {
-      return NextResponse.json({ error: 'Lipseste competitionId' }, { status: 400 })
-    }
-
-    const created: Array<{
-      index: number
-      email: string
-      password: string
-      user_id: string
-    }> = []
-
+    const created: any[] = []
     const skipped: string[] = []
 
     for (let i = 1; i <= 20; i++) {
       const email = `jurat${i}@maverick.local`
       const password = `Jurat${i}2026!`
-      const displayName = `Jurat ${i}`
+      const name = `Jurat ${i}`
 
-      const { data: existingProfile, error: existingProfileError } = await supabaseAdmin
-        .from('profiles')
-        .select('id, email')
-        .eq('email', email)
-        .maybeSingle()
+      // 🔥 1. cauta in auth.users
+      const { data: existingAuthUser } = await supabaseAdmin.auth.admin.listUsers()
 
-      if (existingProfileError) {
-        return NextResponse.json(
-          {
-            error: `Eroare la cautarea profilului existent pentru ${email}`,
-            details: existingProfileError.message,
-          },
-          { status: 500 }
-        )
-      }
+      const existingUser = existingAuthUser.users.find(u => u.email === email)
 
-      if (existingProfile?.id) {
-        const { data: existingJudge, error: existingJudgeError } = await supabaseAdmin
-          .from('judges')
-          .select('id')
-          .eq('user_id', existingProfile.id)
-          .eq('competition_id', competitionId)
-          .maybeSingle()
+      let userId = existingUser?.id
 
-        if (existingJudgeError) {
-          return NextResponse.json(
-            {
-              error: `Eroare la cautarea juratului existent pentru ${email}`,
-              details: existingJudgeError.message,
-            },
-            { status: 500 }
-          )
-        }
+      // 🔥 2. daca nu exista → creeaza
+      if (!userId) {
+        const { data: newUser, error: createError } =
+          await supabaseAdmin.auth.admin.createUser({
+            email,
+            password,
+            email_confirm: true,
+          })
 
-        if (!existingJudge?.id) {
-          const { error: insertJudgeError } = await supabaseAdmin.from('judges').insert([
-            {
-              user_id: existingProfile.id,
-              competition_id: competitionId,
-            },
-          ])
-
-          if (insertJudgeError) {
-            return NextResponse.json(
-              {
-                error: `Nu am putut asocia juratul existent ${email} la concurs`,
-                details: insertJudgeError.message,
-              },
-              { status: 500 }
-            )
-          }
-        }
-
-        skipped.push(email)
-        continue
-      }
-
-      const { data: createdUser, error: createUserError } =
-        await supabaseAdmin.auth.admin.createUser({
-          email,
-          password,
-          email_confirm: true,
-          user_metadata: {
-            name: displayName,
-          },
-        })
-
-      if (createUserError || !createdUser.user) {
-        return NextResponse.json(
-          {
+        if (createError || !newUser.user) {
+          return NextResponse.json({
             error: `Nu am putut crea ${email}`,
-            details: createUserError?.message || 'eroare necunoscuta',
-          },
-          { status: 500 }
-        )
+            details: createError?.message,
+          })
+        }
+
+        userId = newUser.user.id
       }
 
-      const { error: profileUpsertError } = await supabaseAdmin.from('profiles').upsert([
-        {
-          id: createdUser.user.id,
-          full_name: displayName,
+      // 🔥 3. profile UPSERT (nu doar insert)
+      const { error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .upsert({
+          id: userId,
+          full_name: name,
           email,
           role: 'judge',
-          club_id: null,
-        },
-      ])
+        })
 
-      if (profileUpsertError) {
-        return NextResponse.json(
-          {
-            error: `Nu am putut salva profilul pentru ${email}`,
-            details: profileUpsertError.message,
-          },
-          { status: 500 }
-        )
+      if (profileError) {
+        return NextResponse.json({
+          error: `Eroare profil ${email}`,
+          details: profileError.message,
+        })
       }
 
-      const { error: judgeInsertError } = await supabaseAdmin.from('judges').insert([
-        {
-          user_id: createdUser.user.id,
-          competition_id: competitionId,
-        },
-      ])
+      // 🔥 4. verifica judges EXISTENT
+      const { data: existingJudge } = await supabaseAdmin
+        .from('judges')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('competition_id', competitionId)
+        .maybeSingle()
 
-      if (judgeInsertError) {
-        return NextResponse.json(
-          {
-            error: `Nu am putut salva juratul pentru ${email}`,
-            details: judgeInsertError.message,
-          },
-          { status: 500 }
-        )
+      if (!existingJudge) {
+        const { error: judgeError } = await supabaseAdmin
+          .from('judges')
+          .insert({
+            user_id: userId,
+            competition_id: competitionId,
+          })
+
+        if (judgeError) {
+          return NextResponse.json({
+            error: `Eroare judges ${email}`,
+            details: judgeError.message,
+          })
+        }
+
+        created.push({ email })
+      } else {
+        skipped.push(email)
       }
-
-      created.push({
-        index: i,
-        email,
-        password,
-        user_id: createdUser.user.id,
-      })
     }
 
     return NextResponse.json({
@@ -247,12 +138,9 @@ export async function POST(req: NextRequest) {
       created,
       skipped,
     })
-  } catch (error) {
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : 'A aparut o eroare necunoscuta',
-      },
-      { status: 500 }
-    )
+  } catch (err) {
+    return NextResponse.json({
+      error: err instanceof Error ? err.message : 'eroare necunoscuta',
+    })
   }
 }
