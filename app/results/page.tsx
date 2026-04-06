@@ -529,32 +529,42 @@ export default function ResultsPage() {
                 </div>
 
                 {podiumRows.length > 0 && (
-  <div className="mb-8">
-    <h3 className="mb-4 text-lg font-bold text-gray-900">
+  <div className="mb-10">
+    <h3 className="mb-6 text-xl font-bold text-gray-900">
       Podium
     </h3>
 
-    <div className="grid gap-4 md:grid-cols-3">
-      {podiumRows.map((row, index) => {
-        const override = rankingOverrides.find(o => o.performance_id === row.performanceId)
+    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {podiumRows.map((row) => {
+        const override = rankingOverrides.find(
+          (o) => o.performance_id === row.performanceId
+        )
 
         return (
-          <div key={row.performanceId} className="rounded-2xl border bg-white p-5 shadow-sm">
+          <div
+            key={row.performanceId}
+            className="rounded-2xl border bg-white p-6 shadow-sm transition hover:shadow-md"
+          >
             <div className="mb-3 text-sm font-semibold text-gray-500">
-              {override?.podium_label || getPlaceBadge(index)}
+              {override?.podium_label ||
+                (override?.manual_place
+                  ? `Locul ${override.manual_place}`
+                  : '')}
             </div>
 
-            <div className="mb-2 text-lg font-bold text-gray-900">{row.title}</div>
+            <div className="mb-2 text-lg font-bold text-gray-900">
+              {row.title}
+            </div>
 
             <p className="text-sm text-gray-600">
               Club: {row.clubName}
             </p>
 
             <p className="text-sm text-gray-600">
-              Nr moment: {row.runningOrder || '-'}
+              Moment: #{row.runningOrder || '-'}
             </p>
 
-            <div className="mt-3 text-lg font-bold">
+            <div className="mt-4 text-2xl font-bold text-black">
               {formatNumber(row.totalScore)}
             </div>
           </div>
@@ -590,13 +600,13 @@ export default function ResultsPage() {
                         )
 
                         const highlightClass =
-                          index === 0
-                            ? 'bg-yellow-50'
-                            : index === 1
-                              ? 'bg-gray-50'
-                              : index === 2
-                                ? 'bg-amber-50'
-                                : ''
+  index === 0
+    ? 'bg-yellow-100'
+    : index === 1
+      ? 'bg-gray-100'
+      : index === 2
+        ? 'bg-orange-100'
+        : ''
 
                         return (
                           <tr
