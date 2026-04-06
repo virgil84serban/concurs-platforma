@@ -10,7 +10,6 @@ type Profile = {
   role: string
   email: string | null
   full_name?: string | null
-  name?: string | null
 }
 
 type Competition = {
@@ -89,7 +88,6 @@ type JudgeProfile = {
   id: string
   email: string | null
   full_name?: string | null
-  name?: string | null
   role: string
 }
 type RankingOverride = {
@@ -264,7 +262,7 @@ const [editingOverridePerformanceId, setEditingOverridePerformanceId] = useState
 
   const { data: profileData, error: profileError } = await supabase
     .from('profiles')
-    .select('id, role, email, full_name, name')
+    .select('id, role, email, full_name')
     .eq('id', user.id)
     .maybeSingle()
 
@@ -323,7 +321,7 @@ const [editingOverridePerformanceId, setEditingOverridePerformanceId] = useState
   async function loadJudgeProfiles() {
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, email, full_name, name, role')
+      .select('id, email, full_name, role')
       .eq('role', 'judge')
       .order('email', { ascending: true })
 
@@ -401,8 +399,7 @@ const [editingOverridePerformanceId, setEditingOverridePerformanceId] = useState
           competition_id,
           profiles (
             email,
-            full_name,
-            name
+            full_name
           )
         `)
         .eq('competition_id', competitionId),
@@ -1897,7 +1894,7 @@ const [editingOverridePerformanceId, setEditingOverridePerformanceId] = useState
                       <option value="">Selecteaza juratul</option>
                       {judgeProfiles.map((item) => (
                         <option key={item.id} value={item.id}>
-                          {(item.full_name || item.name || item.email || item.id) +
+                          {(item.full_name || item.email || item.id) +
                             (item.email ? ` (${item.email})` : '')}
                         </option>
                       ))}
@@ -1930,7 +1927,7 @@ const [editingOverridePerformanceId, setEditingOverridePerformanceId] = useState
                         return (
                           <tr key={item.id} className="border-b">
                             <td className="p-3 text-sm font-medium">
-                              {judgeProfile?.full_name || judgeProfile?.name || '-'}
+                              {judgeProfile?.full_name || '-'}
                             </td>
                             <td className="p-3 text-sm">{judgeProfile?.email || '-'}</td>
                             <td className="p-3 text-sm">
