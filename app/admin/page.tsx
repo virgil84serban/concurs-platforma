@@ -77,11 +77,6 @@ type JudgeAssignment = {
   id: string
   user_id: string
   competition_id: string
-  profiles?: {
-    email: string | null
-    full_name: string | null
-    name?: string | null
-  }[] | null
 }
 
 type JudgeProfile = {
@@ -190,6 +185,7 @@ export default function AdminPage() {
   const [criteria, setCriteria] = useState<ScoreCriterion[]>([])
   const [judgeProfiles, setJudgeProfiles] = useState<JudgeProfile[]>([])
   const [judges, setJudges] = useState<JudgeAssignment[]>([])
+  const [judgeProfilesMap, setJudgeProfilesMap] = useState<Record<string, JudgeProfile>>({})
 const [rankingOverrides, setRankingOverrides] = useState<RankingOverride[]>([])
 
 const [overridePerformanceId, setOverridePerformanceId] = useState('')
@@ -333,13 +329,14 @@ const [editingOverridePerformanceId, setEditingOverridePerformanceId] = useState
     setJudgeProfiles((data as JudgeProfile[]) || [])
   }
 
-    async function loadCompetitionData(competitionId: string) {
+      async function loadCompetitionData(competitionId: string) {
     if (!competitionId) {
       setCategories([])
       setPerformances([])
       setCriteria([])
       setJudges([])
       setRankingOverrides([])
+      setJudgeProfilesMap({})
       return
     }
 
@@ -393,15 +390,7 @@ const [editingOverridePerformanceId, setEditingOverridePerformanceId] = useState
 
       supabase
         .from('judges')
-        .select(`
-          id,
-          user_id,
-          competition_id,
-          profiles (
-            email,
-            full_name
-          )
-        `)
+        .select('id, user_id, competition_id')
         .eq('competition_id', competitionId),
 
       supabase
@@ -428,16 +417,43 @@ const [editingOverridePerformanceId, setEditingOverridePerformanceId] = useState
       setCriteria((criteriaRes.data as ScoreCriterion[]) || [])
     }
 
-    if (judgesRes.error) {
-      setMessage('Eroare la jurati: ' + judgesRes.error.message)
-    } else {
-      setJudges((judgesRes.data as unknown as JudgeAssignment[]) || [])
-    }
-
     if (rankingOverridesRes.error) {
       setMessage('Eroare la ranking override: ' + rankingOverridesRes.error.message)
     } else {
       setRankingOverrides((rankingOverridesRes.data as RankingOverride[]) || [])
+    }
+
+    if (judgesRes.error) {
+      setMessage('Eroare la jurati: ' + judgesRes.error.message)
+      setJudges([])
+      setJudgeProfilesMap({})
+    } else {
+      const judgeRows = (judgesRes.data as JudgeAssignment[]) || []
+      setJudges(judgeRows)
+
+      const judgeUserIds = judgeRows.map((item) => item.user_id)
+
+      if (judgeUserIds.length === 0) {
+        setJudgeProfilesMap({})
+      } else {
+        const { data: linkedProfiles, error: linkedProfilesError } = await supabase
+          .from('profiles')
+          .select('id, email, full_name, role')
+          .in('id', judgeUserIds)
+
+        if (linkedProfilesError) {
+          setMessage('Eroare la profilurile juratilor: ' + linkedProfilesError.message)
+          setJudgeProfilesMap({})
+        } else {
+          const nextMap: Record<string, JudgeProfile> = {}
+
+          ;((linkedProfiles as JudgeProfile[]) || []).forEach((item) => {
+            nextMap[item.id] = item
+          })
+
+          setJudgeProfilesMap(nextMap)
+        }
+      }
     }
   }
 
@@ -1922,7 +1938,7 @@ const [editingOverridePerformanceId, setEditingOverridePerformanceId] = useState
                     </thead>
                     <tbody>
                       {judges.map((item) => {
-                        const judgeProfile = item.profiles?.[0]
+  const judgeProfile = judgeProfilesMap[item.user_id]
 
                         return (
                           <tr key={item.id} className="border-b">
